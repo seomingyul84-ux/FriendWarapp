@@ -45,7 +45,7 @@ setInterval(async () => {
     });
   }
   console.log(`Tick processed: ${new Date().toISOString()}`);
-}, 60000);
+}, 3000);
 
 // 도착 시 실행되는 핵심 함수
 async function handleArrival(playerId, mission, allProvinces) {
