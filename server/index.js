@@ -1,7 +1,12 @@
+const express = require('express');
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.get('/', (req, res) => res.send('War Game Server Live!'));
+app.listen(port, () => console.log(`Listening on port ${port}`));
+
+// --- 아래는 기존 사령관님의 Firebase 코드 ---
 const admin = require('firebase-admin');
-const { processBattleTick } = require('./battleEngine');
-const { calculateIncome } = require('./gameLogic');
-const UNITS = require('./units');
 
 // 보안 파일 대신 Render의 환경 변수(FIREBASE_CONFIG)를 읽어옵니다.
 try {
