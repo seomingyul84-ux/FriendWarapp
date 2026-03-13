@@ -1,15 +1,12 @@
 {
   "name": "friend-war-app",
   "version": "1.0.0",
-  "description": "실시간 전략 웹게임 서버",
+  "description": "실시간 전략 서버",
   "main": "server/index.js",
   "scripts": {
-    "start": "node server/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server/index.js"
   },
   "dependencies": {
     "firebase-admin": "^11.0.0"
-  },
-  "author": "",
-  "license": "ISC"
+  }
 }
