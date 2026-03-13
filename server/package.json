@@ -1,12 +1,17 @@
 {
-  "name": "friend-war-app",
+  "name": "friend-war-server",
   "version": "1.0.0",
-  "description": "실시간 전략 서버",
-  "main": "server/index.js",
+  "description": "Friend War App 실시간 게임 서버",
+  "main": "index.js",
   "scripts": {
-    "start": "node server/index.js"
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "express": "^4.18.2",
     "firebase-admin": "^11.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
   }
 }
