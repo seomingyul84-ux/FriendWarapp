@@ -2,42 +2,37 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>FriendWarapp - 사령관 선택</title>
+    <title>FriendWarapp - 전술 지휘실</title>
     <style>
-        body { margin: 0; background: #1a1a1a; color: white; font-family: 'Malgun Gothic', sans-serif; text-align: center; }
-        #login-screen { padding: 50px; }
-        .btn-group { display: flex; justify-content: center; gap: 20px; margin-top: 30px; }
-        button { padding: 15px 30px; font-size: 18px; cursor: pointer; border: none; border-radius: 5px; transition: 0.3s; }
-        .btn-mingyu { background: #2e7d32; color: white; } /* 서민규 (초록) */
-        .btn-sechan { background: #1565c0; color: white; } /* 박세찬 (파랑) */
-        .btn-manjung { background: #c62828; color: white; } /* 김만중 (빨강) */
-        button:hover { transform: scale(1.1); filter: brightness(1.2); }
-        
-        #game-screen { display: none; }
-        .status-bar { background: #333; padding: 15px; border-bottom: 2px solid #444; }
-        #map { display: grid; grid-template-columns: repeat(5, 120px); gap: 10px; justify-content: center; margin: 20px; }
-        .province { width: 120px; height: 120px; border: 2px solid #555; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; }
-        .owner-me { border: 4px solid #fff; box-shadow: 0 0 15px rgba(255,255,255,0.5); } /* 내 땅 강조 */
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --mingyu: #22c55e; --sechan: #3b82f6; --manjung: #ef4444; }
+        body { margin: 0; background: var(--bg); color: #f8fafc; font-family: 'Pretendard', sans-serif; }
+        #overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
+        .btn-group button { padding: 1.2rem 2.5rem; margin: 10px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 1.1rem; }
+        .btn-m { background: var(--mingyu); color: white; }
+        .btn-s { background: var(--sechan); color: white; }
+        .btn-j { background: var(--manjung); color: white; }
+        .header { padding: 1.5rem; background: var(--card); border-bottom: 2px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+        #map { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1.5rem; padding: 2rem; max-width: 1200px; margin: auto; }
+        .province { background: var(--card); padding: 1.5rem; border-radius: 15px; border: 2px solid #334155; text-align: center; transition: 0.3s; }
+        .province.me { border-color: var(--accent); box-shadow: 0 0 20px rgba(56, 189, 248, 0.15); }
+        .unit-count { font-size: 2rem; font-weight: 800; color: #fff; margin: 10px 0; }
     </style>
 </head>
 <body>
-
-    <div id="login-screen">
-        <h1>사령관을 선택하십시오</h1>
+    <div id="overlay">
+        <h1>지휘관을 선택하십시오</h1>
         <div class="btn-group">
-            <button class="btn-mingyu" onclick="startGame('서민규')">서민규</button>
-            <button class="btn-sechan" onclick="startGame('박세찬')">박세찬</button>
-            <button class="btn-manjung" onclick="startGame('김만중')">김만중</button>
+            <button class="btn-m" onclick="startGame('서민규')">서민규</button>
+            <button class="btn-s" onclick="startGame('박세찬')">박세찬</button>
+            <button class="btn-j" onclick="startGame('김만중')">김만중</button>
         </div>
     </div>
 
-    <div id="game-screen">
-        <div class="status-bar">
-            <h2 id="my-name">사령관: -</h2>
-            <p>자금: <span id="money">0</span>G | 상태: <span id="server-status">연결 중...</span></p>
-        </div>
-        <div id="map"></div>
+    <div class="header">
+        <h2 id="display-name" style="margin:0; color:var(--accent);">전술 상황판</h2>
+        <div>자금: <b id="money" style="font-size:1.5rem;">0</b> G</div>
     </div>
+    <div id="map"></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -46,52 +41,40 @@
         const firebaseConfig = { databaseURL: "https://friendwargme-default-rtdb.firebaseio.com/" };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-
         let myName = "";
 
-        // 게임 시작 함수
         window.startGame = function(name) {
             myName = name;
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('game-screen').style.display = 'block';
-            document.getElementById('my-name').innerText = `사령관: ${myName}`;
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('display-name').innerText = `지휘관: ${myName}`;
             
-            initMap();
-        };
-
-        function initMap() {
-            // 돈 업데이트
-            onValue(ref(db, `players/${myName}/resources/money`), (snapshot) => {
-                document.getElementById('money').innerText = snapshot.val() || 0;
+            // 실시간 자금 업데이트
+            onValue(ref(db, `players/${myName}/resources/money`), s => {
+                document.getElementById('money').innerText = s.val() || 0;
             });
 
-            // 지도 업데이트
+            // 실시간 지도 업데이트
             onValue(ref(db, 'provinces'), (snapshot) => {
-                const data = snapshot.val();
                 const mapDiv = document.getElementById('map');
+                const data = snapshot.val();
+                if (!data) return;
                 mapDiv.innerHTML = "";
-                
                 for (let id in data) {
-                    const prov = data[id];
-                    const div = document.createElement('div');
-                    
-                    // 소유주에 따른 색상 변경
-                    let bgColor = "#444"; // 중립
-                    if (prov.owner === "서민규") bgColor = "#2e7d32";
-                    if (prov.owner === "박세찬") bgColor = "#1565c0";
-                    if (prov.owner === "김만중") bgColor = "#c62828";
-                    
-                    div.style.backgroundColor = bgColor;
-                    div.className = `province ${prov.owner === myName ? 'owner-me' : ''}`;
-                    div.innerHTML = `<b>${id}</b><br>${prov.type}<br>병력: ${prov.units || 0}`;
-                    mapDiv.appendChild(div);
+                    const p = data[id];
+                    const card = document.createElement('div');
+                    card.className = `province ${p.owner === myName ? 'me' : ''}`;
+                    let color = p.owner === "서민규" ? "#22c55e" : (p.owner === "박세찬" ? "#3b82f6" : "#ef4444");
+                    card.style.borderTop = `6px solid ${color}`;
+                    card.innerHTML = `
+                        <div style="color:${color}; font-weight:bold;">${p.owner || '중립'}</div>
+                        <div style="font-size:1.2rem; margin:5px 0;">${id}</div>
+                        <div class="unit-count">${p.units || 0}</div>
+                        <div style="font-size:0.9rem; opacity:0.6;">${p.type}</div>
+                    `;
+                    mapDiv.appendChild(card);
                 }
             });
-        }
-
-        // 서버 체크
-        fetch("https://friendwarapp.onrender.com")
-            .then(() => document.getElementById('server-status').innerText = "서버 가동 중 ✅");
+        };
     </script>
 </body>
 </html>
