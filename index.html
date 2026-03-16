@@ -2,20 +2,60 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>FriendWarapp - 전술 지휘실</title>
+    <title>FriendWarapp - 전략 지휘 통제실</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --mingyu: #22c55e; --sechan: #3b82f6; --manjung: #ef4444; }
-        body { margin: 0; background: var(--bg); color: #f8fafc; font-family: 'Pretendard', sans-serif; }
-        #overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
-        .btn-group button { padding: 1.2rem 2.5rem; margin: 10px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 1.1rem; }
-        .btn-m { background: var(--mingyu); color: white; }
-        .btn-s { background: var(--sechan); color: white; }
-        .btn-j { background: var(--manjung); color: white; }
-        .header { padding: 1.5rem; background: var(--card); border-bottom: 2px solid #334155; display: flex; justify-content: space-between; align-items: center; }
-        #map { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1.5rem; padding: 2rem; max-width: 1200px; margin: auto; }
-        .province { background: var(--card); padding: 1.5rem; border-radius: 15px; border: 2px solid #334155; text-align: center; transition: 0.3s; }
-        .province.me { border-color: var(--accent); box-shadow: 0 0 20px rgba(56, 189, 248, 0.15); }
-        .unit-count { font-size: 2rem; font-weight: 800; color: #fff; margin: 10px 0; }
+        :root { 
+            --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; 
+            --mingyu: #22c55e; --sechan: #3b82f6; --manjung: #ef4444; 
+            --tile-light: #2d3748; --tile-dark: #1a202c;
+        }
+        body { margin: 0; background: var(--bg); color: #f8fafc; font-family: 'Noto Sans KR', sans-serif; overflow-x: hidden; }
+        
+        /* 시작 오버레이 */
+        #overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.98); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; }
+        .btn-group button { padding: 1.5rem 3rem; margin: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 1.2rem; color: white; }
+        .btn-m { background: var(--mingyu); } .btn-s { background: var(--sechan); } .btn-j { background: var(--manjung); }
+
+        /* 헤더 */
+        .header { position: fixed; top: 0; width: 100%; height: 70px; padding: 0 2rem; background: var(--card); border-bottom: 2px solid #334155; display: flex; justify-content: space-between; align-items: center; z-index: 500; box-sizing: border-box; }
+
+        /* 메인 레이아웃 */
+        .main-container { display: flex; padding-top: 70px; height: calc(100vh - 70px); }
+        
+        /* 16x16 보드판 */
+        #map { 
+            display: grid; 
+            grid-template-columns: repeat(16, 1fr); 
+            gap: 1px; 
+            padding: 1rem;
+            background: #334155;
+            flex-grow: 1;
+            overflow: auto;
+        }
+
+        .tile { 
+            aspect-ratio: 1; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            cursor: pointer; transition: 0.1s; position: relative; font-family: 'Roboto Condensed', sans-serif;
+        }
+        .tile:nth-child(even) { background: var(--tile-light); }
+        .tile:nth-child(odd) { background: var(--tile-dark); }
+        .tile:hover { filter: brightness(1.5); outline: 2px solid white; z-index: 10; }
+        .tile.me { outline: 2px solid var(--accent); z-index: 5; }
+
+        .tile-id { font-size: 0.6rem; position: absolute; top: 2px; left: 2px; opacity: 0.5; }
+        .unit-abbr { font-size: 1.1rem; font-weight: bold; }
+        .unit-count { font-size: 0.8rem; color: var(--accent); }
+
+        /* 정보 패널 */
+        #info-panel { 
+            width: 350px; background: var(--card); border-left: 2px solid #334155; 
+            padding: 2rem; box-sizing: border-box; overflow-y: auto;
+        }
+        .info-header { border-bottom: 1px solid #475569; padding-bottom: 1rem; margin-bottom: 1rem; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9rem; }
+        .stat-item { background: #0f172a; padding: 10px; border-radius: 5px; }
     </style>
 </head>
 <body>
@@ -29,10 +69,18 @@
     </div>
 
     <div class="header">
-        <h2 id="display-name" style="margin:0; color:var(--accent);">전술 상황판</h2>
-        <div>자금: <b id="money" style="font-size:1.5rem;">0</b> G</div>
+        <h2 id="display-name" style="margin:0; color:var(--accent);">작전 대기 중...</h2>
+        <div>보유 자금: <b id="money" style="font-size:1.5rem; color:var(--accent);">0</b> G</div>
     </div>
-    <div id="map"></div>
+
+    <div class="main-container">
+        <div id="map"></div>
+        <div id="info-panel">
+            <div id="panel-content">
+                <p style="text-align:center; opacity:0.5; margin-top:100px;">타일을 선택하여 상세 정보를 확인하십시오.</p>
+            </div>
+        </div>
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -43,38 +91,82 @@
         const db = getDatabase(app);
         let myName = "";
 
+        // 사령관님의 유닛 약칭 매핑
+        const unitAbbr = {
+            'INFANTRY': 'INF', 'TANK': 'TNK', 'ARTILLERY': 'ART',
+            'FIGHTER': 'FTR', 'BOMBER': 'BMR', 'SUBMARINE': 'SUB',
+            'DESTROYER': 'DD', 'BATTLESHIP': 'BB', 'CARRIER': 'CV'
+        };
+
         window.startGame = function(name) {
             myName = name;
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('display-name').innerText = `지휘관: ${myName}`;
             
-            // 실시간 자금 업데이트
+            // 자금 업데이트
             onValue(ref(db, `players/${myName}/resources/money`), s => {
-                document.getElementById('money').innerText = s.val() || 0;
+                document.getElementById('money').innerText = (s.val() || 0).toLocaleString();
             });
 
-            // 실시간 지도 업데이트
+            // 256개 타일 실시간 업데이트
             onValue(ref(db, 'provinces'), (snapshot) => {
                 const mapDiv = document.getElementById('map');
                 const data = snapshot.val();
                 if (!data) return;
+                
                 mapDiv.innerHTML = "";
-                for (let id in data) {
+                // P1 ~ P256 순차 정렬 출력
+                const sortedKeys = Object.keys(data).sort((a, b) => parseInt(a.slice(1)) - parseInt(b.slice(1)));
+                
+                sortedKeys.forEach(id => {
                     const p = data[id];
-                    const card = document.createElement('div');
-                    card.className = `province ${p.owner === myName ? 'me' : ''}`;
-                    let color = p.owner === "서민규" ? "#22c55e" : (p.owner === "박세찬" ? "#3b82f6" : "#ef4444");
-                    card.style.borderTop = `6px solid ${color}`;
-                    card.innerHTML = `
-                        <div style="color:${color}; font-weight:bold;">${p.owner || '중립'}</div>
-                        <div style="font-size:1.2rem; margin:5px 0;">${id}</div>
-                        <div class="unit-count">${p.units || 0}</div>
-                        <div style="font-size:0.9rem; opacity:0.6;">${p.type}</div>
+                    const tile = document.createElement('div');
+                    tile.className = `tile ${p.owner === myName ? 'me' : ''}`;
+                    
+                    let ownerColor = p.owner === "서민규" ? "var(--mingyu)" : (p.owner === "박세찬" ? "var(--sechan)" : (p.owner === "김만중" ? "var(--manjung)" : "transparent"));
+                    tile.style.borderBottom = `4px solid ${ownerColor}`;
+
+                    const abbr = unitAbbr[p.unit?.type] || '';
+                    tile.innerHTML = `
+                        <span class="tile-id">${id}</span>
+                        <span class="unit-abbr">${abbr}</span>
+                        <span class="unit-count">${p.unit?.count || 0}</span>
                     `;
-                    mapDiv.appendChild(card);
-                }
+                    
+                    tile.onclick = () => updateInfoPanel(p);
+                    mapDiv.appendChild(tile);
+                });
             });
         };
+
+        function updateInfoPanel(p) {
+            const content = document.getElementById('panel-content');
+            let color = p.owner === "서민규" ? "var(--mingyu)" : (p.owner === "박세찬" ? "var(--sechan)" : "var(--manjung)");
+            if (p.owner === "중립") color = "#94a3b8";
+
+            content.innerHTML = `
+                <div class="info-header">
+                    <h2 style="margin:0; color:${color}">${p.id} 영지</h2>
+                    <small>점령 주체: ${p.owner || '중립'}</small>
+                </div>
+                <div class="stat-grid">
+                    <div class="stat-item"><b>지형</b><br>${p.terrain || '평지'}</div>
+                    <div class="stat-item"><b>인구</b><br>${(p.population || 0).toLocaleString()}</div>
+                    <div class="stat-item"><b>기물</b><br>${p.unit?.type || '없음'}</div>
+                    <div class="stat-item"><b>수량</b><br>${p.unit?.count || 0}</div>
+                </div>
+                <h3 style="margin-top:1.5rem; border-bottom:1px solid #334155;">산업 시설</h3>
+                <div class="stat-grid">
+                    <div class="stat-item">🏭 군수: ${p.factories?.military || 0}</div>
+                    <div class="stat-item">⚓ 조선: ${p.factories?.dockyard || 0}</div>
+                    <div class="stat-item">🏗️ 중공업: ${p.factories?.heavy_ind || 0}</div>
+                    <div class="stat-item">📦 경공업: ${p.factories?.light_ind || 0}</div>
+                </div>
+                <h3 style="margin-top:1.5rem; border-bottom:1px solid #334155;">자원 상태</h3>
+                <div class="stat-item">💎 ${p.resources?.type || '없음'}: ${p.resources?.amount || 0}</div>
+                <button style="width:100%; margin-top:2rem; padding:10px; background:var(--accent); border:none; border-radius:5px; font-weight:bold; cursor:pointer;" onclick="alert('전개 기능 개발 중')">병력 이동 / 공격</button>
+            `;
+        }
     </script>
 </body>
 </html>
