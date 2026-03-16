@@ -1,134 +1,103 @@
 const express = require('express');
-const cors = require('cors'); // CORS 허용 추가
+const cors = require('cors');
 const admin = require('firebase-admin');
 const app = express();
 
 app.use(cors());
+app.use(express.json()); // 명령 수신을 위해 추가
 const port = process.env.PORT || 3000;
 
-// 1. Firebase 초기화
+// Firebase 초기화
 try {
     const serviceAccount = JSON.parse(process.env.FIREBASE_CONFIG);
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
         databaseURL: "https://friendwargme-default-rtdb.firebaseio.com/"
     });
-    console.log("Firebase 연결 성공!");
 } catch (error) {
-    console.error("Firebase 초기화 에러: 환경 변수를 확인하세요.");
     process.exit(1);
 }
 
 const db = admin.database();
 
-/**
- * [추가] 256개 타일 초기화 함수
- * DB에 provinces 데이터가 없을 때만 실행됩니다.
- */
+// units.js 기반 데이터 (서버 로직용)
+const UNITS = {
+    INFANTRY: { hp: 100, atk: 10, speed: 5, cost: 100, bonus: { TANK: 0.5, ARTILLERY: 1.2 } },
+    TANK: { hp: 300, atk: 40, speed: 12, cost: 500, bonus: { INFANTRY: 2.0, ARTILLERY: 1.5 } },
+    ARTILLERY: { hp: 80, atk: 50, speed: 3, cost: 300, bonus: { INFANTRY: 1.8 } },
+    // 공군/해군 데이터 생략 (상기 방식과 동일하게 적용 가능)
+};
+
+// 256개 타일 초기화 (기존 로직 유지 + 유닛 객체 구조화)
 async function initMapIfEmpty() {
     const snap = await db.ref('provinces').once('value');
-    if (snap.exists()) return; // 이미 데이터가 있으면 중단
+    if (snap.exists()) return;
 
-    console.log("맵 데이터가 없습니다. 256개 타일 생성을 시작합니다...");
     const provinces = {};
     const terrains = ['평지', '산악', '숲', '구릉', '해안'];
-    const resources = ['철', '고무', '알루미늄', '텅스텐', '석유', '없음'];
-
     for (let i = 1; i <= 256; i++) {
         const id = `P${i}`;
         provinces[id] = {
-            id: id,
-            owner: "중립",
-            terrain: terrains[Math.floor(Math.random() * terrains.length)],
-            population: Math.floor(Math.random() * 100000) + 10000,
-            factories: {
-                military: 0, dockyard: 0, light_ind: 1, heavy_ind: 0 
-            },
-            resources: {
-                type: resources[Math.floor(Math.random() * resources.length)],
-                amount: Math.floor(Math.random() * 50)
-            },
-            mines: Math.floor(Math.random() * 2),
-            units: 0
+            id: id, owner: "중립", terrain: terrains[Math.floor(Math.random() * terrains.length)],
+            population: 50000,
+            factories: { military: 0, dockyard: 0, light_ind: 1, heavy_ind: 0 },
+            unit: { type: "INFANTRY", count: 0 } 
         };
     }
     await db.ref('provinces').set(provinces);
-    console.log("256개 전략 타일 초기화 완료!");
 }
-
-// 서버 시작 시 맵 체크
 initMapIfEmpty();
 
-// 자산 생산 로직 (공장 수에 비례)
-function calculateIncome(myProvinces) {
-    let totalIncome = 0;
-    myProvinces.forEach(p => {
-        // 경공업 1당 5G, 중공업 1당 20G 생산
-        totalIncome += (p.factories?.light_ind || 0) * 5;
-        totalIncome += (p.factories?.heavy_ind || 0) * 20;
-    });
-    return totalIncome || 10; // 최소 기본금 10G
+// [전투 엔진] 상성 및 지형 반영
+function resolveBattle(atkUnit, defUnit, terrain) {
+    let atkPower = UNITS[atkUnit.type].atk * atkUnit.count;
+    let defPower = UNITS[defUnit.type].atk * defUnit.count;
+
+    // 상성 보너스
+    if (UNITS[atkUnit.type].bonus[defUnit.type]) atkPower *= UNITS[atkUnit.type].bonus[defUnit.type];
+    if (terrain === '산악' && atkUnit.type === 'ARTILLERY') atkPower *= 1.5;
+
+    // 결과: 공격자 승리 여부 및 잔존 병력 계산 (단순화)
+    if (atkPower > defPower) return { winner: "attacker", remain: Math.ceil(atkUnit.count * 0.7) };
+    return { winner: "defender", remain: Math.ceil(defUnit.count * 0.8) };
 }
 
-// 3초마다 게임 세상 업데이트
+// 3초마다 틱 처리
 setInterval(async () => {
-    try {
-        const playersSnap = await db.ref('players').once('value');
-        const provincesSnap = await db.ref('provinces').once('value');
+    const playersSnap = await db.ref('players').once('value');
+    const provincesSnap = await db.ref('provinces').once('value');
+    const players = playersSnap.val();
+    const provinces = provincesSnap.val();
+    if (!players || !provinces) return;
+
+    for (let pid in players) {
+        let p = players[pid];
+        // 1. 수익 계산 (공장 기반)
+        const myProvinces = Object.values(provinces).filter(pr => pr.owner === pid);
+        const income = myProvinces.reduce((acc, curr) => acc + (curr.factories.light_ind * 5) + (curr.factories.heavy_ind * 20), 0);
         
-        const players = playersSnap.val();
-        const provinces = provincesSnap.val();
-        if (!players || !provinces) return;
-
-        const provinceArray = Object.values(provinces);
-
-        for (let pid in players) {
-            let p = players[pid];
-
-            // 1. 자원 생산 (내 영지 기반)
-            const myProvinces = provinceArray.filter(pr => pr.owner === pid);
-            const income = calculateIncome(myProvinces);
-            let newMoney = (p.resources?.money || 0) + income;
-
-            // 2. 미션 처리
-            let activeMissions = p.active_missions || {};
-            for (let mId in activeMissions) {
-                let mission = activeMissions[mId];
-                if (new Date().getTime() >= mission.arrival_time) {
-                    await handleArrival(pid, mission, provinces);
-                    delete activeMissions[mId];
+        // 2. 미션 처리 (이동/전투)
+        let missions = p.active_missions || {};
+        for (let mId in missions) {
+            let m = missions[mId];
+            if (new Date().getTime() >= m.arrival_time) {
+                const target = provinces[m.target];
+                if (target.owner === "중립" || target.owner === pid) {
+                    await db.ref(`provinces/${m.target}`).update({ owner: pid, unit: { type: m.unitType, count: m.count } });
+                } else {
+                    const result = resolveBattle({type: m.unitType, count: m.count}, target.unit, target.terrain);
+                    if (result.winner === "attacker") {
+                        await db.ref(`provinces/${m.target}`).update({ owner: pid, unit: { type: m.unitType, count: result.remain } });
+                    } else {
+                        await db.ref(`provinces/${m.target}/unit`).update({ count: result.remain });
+                    }
                 }
+                delete missions[mId];
             }
-
-            await db.ref(`players/${pid}`).update({
-                "resources/money": newMoney,
-                "active_missions": activeMissions
-            });
         }
-        console.log(`Tick processed: ${new Date().toISOString()}`);
-    } catch (err) {
-        console.error("Tick Error:", err);
+        await db.ref(`players/${pid}`).update({ "resources/money": (p.resources?.money || 0) + income + 10, "active_missions": missions });
     }
 }, 3000);
 
-// 전투 및 도착 처리
-async function handleArrival(playerId, mission, allProvinces) {
-    const targetId = mission.target;
-    const targetProvince = allProvinces[targetId];
-    if (!targetProvince) return;
-
-    if (!targetProvince.owner || targetProvince.owner === "중립" || targetProvince.owner === playerId) {
-        await db.ref(`provinces/${targetId}`).update({ owner: playerId });
-        console.log(`${playerId}가 ${targetId}를 무혈 점령했습니다.`);
-    } else {
-        // 단순화된 전투: 공격군이 있으면 무조건 승리 (추후 로직 보강 가능)
-        await db.ref(`provinces/${targetId}`).update({ 
-            owner: playerId,
-            units: mission.units 
-        });
-        console.log(`${playerId}가 ${targetProvince.owner}의 ${targetId}를 함락시켰습니다!`);
-    }
-}
-
-app.get('/', (req, res) => res.send('War Game Server Live! - 256 Tiles Active'));
+app.get('/', (req, res) => res.send('Modern Chess War Server Live!'));
 app.listen(port, () => console.log(`Listening on port ${port}`));
