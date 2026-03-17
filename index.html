@@ -30,31 +30,24 @@
         #grid-overlay { display: grid; grid-template-columns: repeat(16, 1fr); grid-template-rows: repeat(16, 1fr); width: 100%; height: 100%; }
 
         .tile { 
-            border: 0.5px solid rgba(255, 255, 255, 0.05); 
+            border: 0.5px solid rgba(255, 255, 255, 0.1); 
             cursor: pointer; position: relative; transition: 0.1s; 
+            background: transparent; /* 지형 배경 제거 */
         }
 
-        /* 지형별 투명 배경 */
-        .tile[data-terrain="산맥"] { background: rgba(75, 85, 99, 0.2); }
-        .tile[data-terrain="숲"] { background: rgba(22, 101, 52, 0.2); }
-        .tile[data-terrain="도시"] { background: rgba(30, 64, 175, 0.2); }
-        .tile[data-terrain="해안"] { background: rgba(8, 145, 178, 0.2); }
-        .tile[data-terrain="바다"] { background: rgba(30, 58, 138, 0.3); }
+        /* 🟢 세력별 배경색 (지형 배경 대신 타일 전체에 적용) */
+        .tile.owner-mingyu { background: rgba(34, 197, 94, 0.35) !important; border: 1px solid var(--mingyu); }
+        .tile.owner-sechan { background: rgba(59, 130, 246, 0.35) !important; border: 1px solid var(--sechan); }
+        .tile.owner-manjung { background: rgba(239, 68, 68, 0.35) !important; border: 1px solid var(--manjung); }
 
-        /* 세력별 하단 바 표시 (에디팅 중 확인용) */
-        .tile.owner-mingyu { border-bottom: 5px solid var(--mingyu) !important; }
-        .tile.owner-sechan { border-bottom: 5px solid var(--sechan) !important; }
-        .tile.owner-manjung { border-bottom: 5px solid var(--manjung) !important; }
+        .tile:hover { background: rgba(255, 255, 255, 0.2) !important; border: 1.5px solid #fff; z-index: 10; }
+        .tile.selected { outline: 3px solid var(--accent); z-index: 15; box-shadow: inset 0 0 15px var(--accent); }
 
-        .tile:hover { background: rgba(255, 255, 255, 0.2); border: 1.5px solid #fff; z-index: 10; }
-        .tile.selected { outline: 2px solid var(--accent); z-index: 15; box-shadow: inset 0 0 15px var(--accent); }
-
-        .tile-id { font-size: 0.5rem; position: absolute; top: 2px; left: 2px; opacity: 0.4; }
+        .tile-id { font-size: 0.5rem; position: absolute; top: 2px; left: 2px; opacity: 0.5; font-weight: bold; }
         
         #info-panel { width: 380px; background: var(--card); border-left: 2px solid #334155; padding: 1.5rem; box-sizing: border-box; overflow-y: auto; }
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; margin-top: 10px; }
         .stat-item { background: rgba(15, 23, 42, 0.8); padding: 10px; border-radius: 5px; border: 1px solid #334155; }
-        .cmd-btn { width: 100%; margin-top: 10px; padding: 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; }
     </style>
 </head>
 <body>
@@ -68,8 +61,8 @@
     </div>
 
     <div class="header">
-        <h2 id="display-name" style="margin:0; color:var(--accent);">영토 설정 모드</h2>
-        <div style="color: #94a3b8; font-size: 0.9rem;">클릭: 점령자 변경 (중립-서-박-김)</div>
+        <h2 id="display-name" style="margin:0; color:var(--accent);">세력권 설정 (지형 고정)</h2>
+        <div style="color: #94a3b8; font-size: 0.9rem;">클릭: [중립-서-박-김] 순환</div>
     </div>
 
     <div class="main-container">
@@ -80,7 +73,7 @@
         </div>
         <div id="info-panel">
             <div id="panel-content">
-                <p style="text-align:center; opacity:0.5; margin-top:100px;">타일을 클릭하여<br>주인을 정해주십시오.</p>
+                <p style="text-align:center; opacity:0.5; margin-top:100px;">타일을 클릭하여<br>영토 소유권을 배분하세요.</p>
             </div>
         </div>
     </div>
@@ -109,31 +102,29 @@
                     const p = data[id] || { id: id, owner: "중립", terrain: "바다" };
                     const tile = document.createElement('div');
                     
-                    // 세력별 클래스 부여
+                    // 🎨 소유자별 배경 클래스 적용
                     let ownerClass = "";
                     if(p.owner === "서민규") ownerClass = "owner-mingyu";
                     else if(p.owner === "박세찬") ownerClass = "owner-sechan";
                     else if(p.owner === "김만중") ownerClass = "owner-manjung";
 
                     tile.className = `tile ${ownerClass} ${id === selectedId ? 'selected' : ''}`;
-                    tile.dataset.terrain = p.terrain || '바다';
                     tile.innerHTML = `<span class="tile-id">${id}</span>`;
                     
                     tile.onclick = () => {
                         selectedId = id;
                         
-                        // 🛠️ 영토 순환 에디터
                         const owners = ['중립', '서민규', '박세찬', '김만중'];
                         let currentIdx = owners.indexOf(p.owner || '중립');
                         let nextOwner = owners[(currentIdx + 1) % owners.length];
                         
-                        // DB 업데이트 (기존 지형 유지, 소유자만 변경)
+                        // ⚠️ 오직 owner만 업데이트하여 지형(terrain)을 보존합니다.
                         update(ref(db, `provinces/${id}`), {
                             owner: nextOwner,
                             id: id
                         });
 
-                        updateInfoPanel(p);
+                        updateInfoPanel(p, nextOwner);
                         document.querySelectorAll('.tile').forEach(t => t.classList.remove('selected'));
                         tile.classList.add('selected');
                     };
@@ -142,21 +133,27 @@
             });
         };
 
-        function updateInfoPanel(p) {
+        function updateInfoPanel(p, nextOwner) {
             const content = document.getElementById('panel-content');
+            // p.owner는 DB 갱신 전 값일 수 있으므로 nextOwner를 활용
+            const displayOwner = nextOwner || p.owner || "중립";
+            
             content.innerHTML = `
                 <div class="info-header">
                     <h2 style="margin:0;">${p.id} 구역</h2>
-                    <h3 style="color:var(--accent)">현재 점령: ${p.owner || '중립'}</h3>
+                    <h1 style="color:var(--accent); margin:10px 0;">${displayOwner}</h1>
                 </div>
                 <div class="stat-grid">
-                    <div class="stat-item"><b>지형</b><br>${p.terrain || '바다'}</div>
-                    <div class="stat-item"><b>상태</b><br>편집 중</div>
+                    <div class="stat-item"><b>보존된 지형</b><br>${p.terrain || '바다'}</div>
+                    <div class="stat-item"><b>상태</b><br>영토 점령 중</div>
                 </div>
-                <p style="margin-top:20px; font-size:0.8rem; color: #94a3b8;">
-                    클릭 시 주인이 실시간으로 변경됩니다. <br>
-                    지형 데이터는 이전에 작업하신 내용이 그대로 유지됩니다.
-                </p>
+                <div style="margin-top:30px; padding:15px; background:rgba(255,255,255,0.05); border-radius:10px;">
+                    <p style="font-size:0.85rem; line-height:1.6;">
+                        ✅ <b>지형 고정 완료</b><br>
+                        이제 클릭해도 지형은 바뀌지 않습니다.<br>
+                        반투명한 색상이 타일 전체를 덮어 영토를 표시합니다.
+                    </p>
+                </div>
             `;
         }
     </script>
