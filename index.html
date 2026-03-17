@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>FriendWarapp - ORN 전략 지휘부</title>
+    <title>FriendWarapp - ORN 세력권 설정</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root { 
@@ -12,18 +12,17 @@
         body { margin: 0; background: var(--bg); color: #f8fafc; font-family: 'Noto Sans KR', sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
         
         #overlay { position: fixed; inset: 0; background: rgba(2, 6, 23, 0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(10px); }
-        .btn-group button { padding: 1.5rem 3rem; margin: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.2rem; color: white; transition: 0.2s; }
+        .btn-group button { padding: 1.5rem 3rem; margin: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.2rem; color: white; }
 
         .header { height: 70px; padding: 0 2rem; background: var(--card); border-bottom: 2px solid #334155; display: flex; justify-content: space-between; align-items: center; z-index: 500; }
 
         .main-container { display: flex; flex: 1; overflow: hidden; }
-        
         #map-area { flex: 1; position: relative; overflow: auto; background: #000; display: flex; align-items: center; justify-content: center; }
 
         #battle-map { 
             position: relative; 
             width: 1024px; height: 768px; 
-            background-image: url('map.png'); /* 최상위 폴더의 map.png */
+            background-image: url('map.png'); 
             background-size: 100% 100%;
             border: 4px solid #475569;
         }
@@ -35,43 +34,42 @@
             cursor: pointer; position: relative; transition: 0.1s; 
         }
 
-        /* 💡 지형별 시각적 피드백 (에디터용) */
-        .tile[data-terrain="산맥"] { background: rgba(75, 85, 99, 0.4); }
-        .tile[data-terrain="숲"] { background: rgba(22, 101, 52, 0.4); }
-        .tile[data-terrain="도시"] { background: rgba(30, 64, 175, 0.4); }
-        .tile[data-terrain="해안"] { background: rgba(8, 145, 178, 0.4); }
-        .tile[data-terrain="바다"] { background: rgba(30, 58, 138, 0.5); }
+        /* 지형별 투명 배경 */
+        .tile[data-terrain="산맥"] { background: rgba(75, 85, 99, 0.2); }
+        .tile[data-terrain="숲"] { background: rgba(22, 101, 52, 0.2); }
+        .tile[data-terrain="도시"] { background: rgba(30, 64, 175, 0.2); }
+        .tile[data-terrain="해안"] { background: rgba(8, 145, 178, 0.2); }
+        .tile[data-terrain="바다"] { background: rgba(30, 58, 138, 0.3); }
+
+        /* 세력별 하단 바 표시 (에디팅 중 확인용) */
+        .tile.owner-mingyu { border-bottom: 5px solid var(--mingyu) !important; }
+        .tile.owner-sechan { border-bottom: 5px solid var(--sechan) !important; }
+        .tile.owner-manjung { border-bottom: 5px solid var(--manjung) !important; }
 
         .tile:hover { background: rgba(255, 255, 255, 0.2); border: 1.5px solid #fff; z-index: 10; }
         .tile.selected { outline: 2px solid var(--accent); z-index: 15; box-shadow: inset 0 0 15px var(--accent); }
-        .tile.me { border: 1.5px solid var(--accent); }
 
-        .tile-id { font-size: 0.5rem; position: absolute; top: 2px; left: 2px; opacity: 0.4; pointer-events: none; }
-        .unit-marker { 
-            position: absolute; width: 100%; height: 100%; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            pointer-events: none; text-shadow: 1px 1px 3px #000; 
-        }
-
+        .tile-id { font-size: 0.5rem; position: absolute; top: 2px; left: 2px; opacity: 0.4; }
+        
         #info-panel { width: 380px; background: var(--card); border-left: 2px solid #334155; padding: 1.5rem; box-sizing: border-box; overflow-y: auto; }
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; margin-top: 10px; }
         .stat-item { background: rgba(15, 23, 42, 0.8); padding: 10px; border-radius: 5px; border: 1px solid #334155; }
-        .cmd-btn { width: 100%; margin-top: 10px; padding: 14px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: white; }
+        .cmd-btn { width: 100%; margin-top: 10px; padding: 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; }
     </style>
 </head>
 <body>
     <div id="overlay">
-        <h1 style="font-size: 3rem; margin-bottom: 2rem; letter-spacing: 10px;">ORN STRATEGY</h1>
+        <h1 style="font-size: 3rem; margin-bottom: 2rem; letter-spacing: 10px;">TERRITORY EDITOR</h1>
         <div class="btn-group">
             <button style="background:var(--mingyu)" onclick="startGame('서민규')">서민규</button>
             <button style="background:var(--sechan)" onclick="startGame('박세찬')">박세찬</button>
-            <button style="background:var(--manjung)" onclick="background:var(--manjung)" onclick="startGame('김만중')">김만중</button>
+            <button style="background:var(--manjung)" onclick="startGame('김만중')">김만중</button>
         </div>
     </div>
 
     <div class="header">
-        <h2 id="display-name" style="margin:0; color:var(--accent);">COMMAND CENTER</h2>
-        <div>보유 자금: <b id="money" style="font-size:1.8rem; color:var(--accent);">0</b> G</div>
+        <h2 id="display-name" style="margin:0; color:var(--accent);">영토 설정 모드</h2>
+        <div style="color: #94a3b8; font-size: 0.9rem;">클릭: 점령자 변경 (중립-서-박-김)</div>
     </div>
 
     <div class="main-container">
@@ -82,7 +80,7 @@
         </div>
         <div id="info-panel">
             <div id="panel-content">
-                <p style="text-align:center; opacity:0.5; margin-top:100px;">타일을 클릭하여 지형을 변경하세요.<br>(평지-산맥-숲-도시-해안-바다)</p>
+                <p style="text-align:center; opacity:0.5; margin-top:100px;">타일을 클릭하여<br>주인을 정해주십시오.</p>
             </div>
         </div>
     </div>
@@ -97,17 +95,10 @@
         let myName = "";
         let selectedId = null;
 
-        const unitIcons = { 'INFANTRY': '🎖️', 'TANK': '🚜', 'ARTILLERY': '💥', 'FIGHTER': '✈️', 'BOMBER': '💣', 'SUBMARINE': '🌊', 'DESTROYER': '🚢', 'BATTLESHIP': '⚓', 'CARRIER': '🛫' };
-
         window.startGame = function(name) {
             myName = name;
             document.getElementById('overlay').style.display = 'none';
-            document.getElementById('display-name').innerText = `HQ: ${myName}`;
             
-            onValue(ref(db, `players/${myName}/resources/money`), s => {
-                document.getElementById('money').innerText = (s.val() || 0).toLocaleString();
-            });
-
             onValue(ref(db, 'provinces'), (snapshot) => {
                 const grid = document.getElementById('grid-overlay');
                 const data = snapshot.val() || {};
@@ -115,33 +106,30 @@
                 
                 for(let i=1; i<=256; i++) {
                     const id = `P${i}`;
-                    const p = data[id] || { id: id, owner: "중립", terrain: "평지" };
+                    const p = data[id] || { id: id, owner: "중립", terrain: "바다" };
                     const tile = document.createElement('div');
-                    tile.className = `tile ${p.owner === myName ? 'me' : ''} ${id === selectedId ? 'selected' : ''}`;
-                    tile.dataset.terrain = p.terrain || '평지'; // CSS 색상 연동
                     
+                    // 세력별 클래스 부여
+                    let ownerClass = "";
+                    if(p.owner === "서민규") ownerClass = "owner-mingyu";
+                    else if(p.owner === "박세찬") ownerClass = "owner-sechan";
+                    else if(p.owner === "김만중") ownerClass = "owner-manjung";
+
+                    tile.className = `tile ${ownerClass} ${id === selectedId ? 'selected' : ''}`;
+                    tile.dataset.terrain = p.terrain || '바다';
                     tile.innerHTML = `<span class="tile-id">${id}</span>`;
-                    
-                    if (p.unit && p.unit.count > 0) {
-                        tile.innerHTML += `
-                            <div class="unit-marker">
-                                <span style="font-size:1.2rem;">${unitIcons[p.unit.type] || '❓'}</span>
-                                <span style="font-size:0.7rem; font-weight:bold;">${p.unit.count}</span>
-                            </div>
-                        `;
-                    }
                     
                     tile.onclick = () => {
                         selectedId = id;
                         
-                        // 🛠️ 지형 순환 에디터 기능
-                        const terrains = ['평지', '산맥', '숲', '도시', '해안', '바다'];
-                        let currentIdx = terrains.indexOf(p.terrain || '평지');
-                        let nextTerrain = terrains[(currentIdx + 1) % terrains.length];
+                        // 🛠️ 영토 순환 에디터
+                        const owners = ['중립', '서민규', '박세찬', '김만중'];
+                        let currentIdx = owners.indexOf(p.owner || '중립');
+                        let nextOwner = owners[(currentIdx + 1) % owners.length];
                         
-                        // DB 업데이트
+                        // DB 업데이트 (기존 지형 유지, 소유자만 변경)
                         update(ref(db, `provinces/${id}`), {
-                            terrain: nextTerrain,
+                            owner: nextOwner,
                             id: id
                         });
 
@@ -156,26 +144,19 @@
 
         function updateInfoPanel(p) {
             const content = document.getElementById('panel-content');
-            let ownerColor = p.owner === "서민규" ? "var(--mingyu)" : (p.owner === "박세찬" ? "var(--sechan)" : "var(--manjung)");
-            if (p.owner === "중립") ownerColor = "#94a3b8";
-
             content.innerHTML = `
                 <div class="info-header">
-                    <h2 style="margin:0; color:${ownerColor}">${p.id} 구역</h2>
-                    <small>소유: ${p.owner || '중립'}</small>
+                    <h2 style="margin:0;">${p.id} 구역</h2>
+                    <h3 style="color:var(--accent)">현재 점령: ${p.owner || '중립'}</h3>
                 </div>
                 <div class="stat-grid">
-                    <div class="stat-item"><b>지형 (클릭변경)</b><br>${p.terrain || '평지'}</div>
-                    <div class="stat-item"><b>인구</b><br>${(p.population || 0).toLocaleString()}</div>
+                    <div class="stat-item"><b>지형</b><br>${p.terrain || '바다'}</div>
+                    <div class="stat-item"><b>상태</b><br>편집 중</div>
                 </div>
-                <h3 style="margin-top:1.5rem; border-bottom:1px solid #334155; padding-bottom:5px;">산업 데이터</h3>
-                <div class="stat-grid">
-                    <div class="stat-item">🏭 군수: ${p.factories?.military || 0}</div>
-                    <div class="stat-item">💎 자원: ${p.resources?.type || '없음'}</div>
-                </div>
-                <div style="margin-top:1.5rem;">
-                    <p style="font-size:0.8rem; color:orange;">※ 에디터 모드: 타일을 클릭할 때마다 지형이 바뀝니다.</p>
-                </div>
+                <p style="margin-top:20px; font-size:0.8rem; color: #94a3b8;">
+                    클릭 시 주인이 실시간으로 변경됩니다. <br>
+                    지형 데이터는 이전에 작업하신 내용이 그대로 유지됩니다.
+                </p>
             `;
         }
     </script>
