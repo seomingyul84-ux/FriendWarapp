@@ -22,7 +22,7 @@
         /* 메인 컨테이너 */
         .main-container { display: flex; flex: 1; overflow: hidden; }
         
-        /* ⚠️ 핵심: ORN 지도를 배경으로 하는 전장 영역 */
+        /* ⚠️ 전장 영역 */
         #map-area { 
             flex: 1; 
             position: relative; 
@@ -35,14 +35,16 @@
 
         #battle-map { 
             position: relative; 
-            width: 1024px; /* 지도 이미지 가로 크기 */
-            height: 768px; /* 지도 이미지 세로 크기 */
-            background-image: url('https://r.jina.ai/i/05e076999e52467d93b33df01a7199c0'); /* 하달하신 ORN 지도 */
+            width: 1024px; /* 이미지 비율에 맞춰 조정 가능 */
+            height: 768px; 
+            /* ⚠️ 최상위 경로의 map.webp 연결 */
+            background-image: url('./map.webp'); 
             background-size: 100% 100%;
             border: 4px solid #475569;
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
         }
 
-        /* 지형 위에 얹어지는 타일 그리드 */
+        /* 격자 오버레이 */
         #grid-overlay { 
             display: grid; 
             grid-template-columns: repeat(16, 1fr); 
@@ -52,24 +54,22 @@
         }
 
         .tile { 
-            border: 0.5px solid rgba(255, 255, 255, 0.1); /* 얇은 경계선 */
+            border: 0.5px solid rgba(255, 255, 255, 0.1); 
             cursor: pointer; 
             position: relative;
             transition: 0.1s;
         }
 
-        /* 💡 지형을 가리지 않도록 호버링할 때만 강조 */
         .tile:hover { background: rgba(56, 189, 248, 0.2); border: 1.5px solid #fff; z-index: 10; }
         .tile.selected { background: rgba(56, 189, 248, 0.3); outline: 2px solid var(--accent); z-index: 15; box-shadow: inset 0 0 15px var(--accent); }
 
-        /* 점령지 표시: 얇은 외곽선만 사용 */
         .tile.me { border: 1px solid var(--accent); box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.2); }
 
-        .tile-id { font-size: 0.5rem; position: absolute; top: 2px; left: 2px; opacity: 0.4; pointer-events: none; }
+        .tile-id { font-size: 0.5rem; position: absolute; top: 2px; left: 2px; opacity: 0.5; pointer-events: none; text-shadow: 1px 1px 2px #000; }
         .unit-marker { 
             position: absolute; width: 100%; height: 100%; 
             display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            pointer-events: none; text-shadow: 1px 1px 2px #000; 
+            pointer-events: none; text-shadow: 1px 1px 3px #000; 
         }
 
         /* 정보 패널 */
@@ -156,7 +156,7 @@
                     
                     tile.onclick = () => {
                         selectedId = id;
-                        updateInfoPanel(p);
+                        updateInfoPanel(p || {id: id, owner: "중립"});
                         document.querySelectorAll('.tile').forEach(t => t.classList.remove('selected'));
                         tile.classList.add('selected');
                     };
