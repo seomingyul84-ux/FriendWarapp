@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>FriendWarapp - ORN 세력권 설정</title>
+    <title>FriendWarapp - ORN STRATEGY</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root { 
@@ -11,11 +11,15 @@
         }
         body { margin: 0; background: var(--bg); color: #f8fafc; font-family: 'Noto Sans KR', sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
         
+        /* 시작 오버레이 */
         #overlay { position: fixed; inset: 0; background: rgba(2, 6, 23, 0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(10px); }
-        .btn-group button { padding: 1.5rem 3rem; margin: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.2rem; color: white; }
+        .btn-group button { padding: 1.5rem 3rem; margin: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.2rem; color: white; transition: 0.2s; }
+        .btn-group button:hover { transform: scale(1.05); filter: brightness(1.2); }
 
+        /* 헤더 */
         .header { height: 70px; padding: 0 2rem; background: var(--card); border-bottom: 2px solid #334155; display: flex; justify-content: space-between; align-items: center; z-index: 500; }
 
+        /* 메인 컨테이너 */
         .main-container { display: flex; flex: 1; overflow: hidden; }
         #map-area { flex: 1; position: relative; overflow: auto; background: #000; display: flex; align-items: center; justify-content: center; }
 
@@ -29,58 +33,53 @@
 
         #grid-overlay { display: grid; grid-template-columns: repeat(16, 1fr); grid-template-rows: repeat(16, 1fr); width: 100%; height: 100%; }
 
-        .tile { 
-            border: 0.5px solid rgba(255, 255, 255, 0.1); 
-            cursor: pointer; position: relative; transition: 0.1s; 
-            background: transparent; /* 지형 배경 제거 */
-        }
-
-        /* 🟢 세력별 배경색 (지형 배경 대신 타일 전체에 적용) */
-        .tile.owner-mingyu { background: rgba(34, 197, 94, 0.35) !important; border: 1px solid var(--mingyu); }
-        .tile.owner-sechan { background: rgba(59, 130, 246, 0.35) !important; border: 1px solid var(--sechan); }
-        .tile.owner-manjung { background: rgba(239, 68, 68, 0.35) !important; border: 1px solid var(--manjung); }
-
-        .tile:hover { background: rgba(255, 255, 255, 0.2) !important; border: 1.5px solid #fff; z-index: 10; }
-        .tile.selected { outline: 3px solid var(--accent); z-index: 15; box-shadow: inset 0 0 15px var(--accent); }
-
-        .tile-id { font-size: 0.5rem; position: absolute; top: 2px; left: 2px; opacity: 0.5; font-weight: bold; }
+        .tile { border: 0.5px solid rgba(255, 255, 255, 0.05); cursor: pointer; position: relative; transition: 0.1s; }
         
+        /* 실전 점령 구역 표시 */
+        .tile.owner-mingyu { background: rgba(34, 197, 94, 0.25); border: 0.5px solid var(--mingyu); }
+        .tile.owner-sechan { background: rgba(59, 130, 246, 0.25); border: 0.5px solid var(--sechan); }
+        .tile.owner-manjung { background: rgba(239, 68, 68, 0.25); border: 0.5px solid var(--manjung); }
+
+        .tile:hover { background: rgba(56, 189, 248, 0.2); border: 1.5px solid #fff; z-index: 10; }
+        .tile.selected { outline: 2px solid var(--accent); z-index: 15; box-shadow: inset 0 0 15px var(--accent); }
+
+        .tile-id { font-size: 0.5rem; position: absolute; top: 2px; left: 2px; opacity: 0.4; pointer-events: none; }
+        .unit-marker { position: absolute; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; text-shadow: 1px 1px 3px #000; }
+
+        /* 정보 패널 */
         #info-panel { width: 380px; background: var(--card); border-left: 2px solid #334155; padding: 1.5rem; box-sizing: border-box; overflow-y: auto; }
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; margin-top: 10px; }
         .stat-item { background: rgba(15, 23, 42, 0.8); padding: 10px; border-radius: 5px; border: 1px solid #334155; }
+        .cmd-btn { width: 100%; margin-top: 10px; padding: 14px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: white; transition: 0.2s; }
     </style>
 </head>
 <body>
     <div id="overlay">
-        <h1 style="font-size: 3rem; margin-bottom: 2rem; letter-spacing: 10px;">TERRITORY EDITOR</h1>
+        <h1 style="font-size: 3rem; margin-bottom: 2rem; letter-spacing: 10px;">ORN STRATEGY</h1>
         <div class="btn-group">
-            <button style="background:var(--mingyu)" onclick="startGame('서민규')">서민규</button>
-            <button style="background:var(--sechan)" onclick="startGame('박세찬')">박세찬</button>
-            <button style="background:var(--manjung)" onclick="startGame('김만중')">김만중</button>
+            <button style="background:var(--mingyu)" onclick="login('서민규')">서민규</button>
+            <button style="background:var(--sechan)" onclick="login('박세찬')">박세찬</button>
+            <button style="background:var(--manjung)" onclick="login('김만중')">김만중</button>
         </div>
     </div>
 
     <div class="header">
-        <h2 id="display-name" style="margin:0; color:var(--accent);">세력권 설정 (지형 고정)</h2>
-        <div style="color: #94a3b8; font-size: 0.9rem;">클릭: [중립-서-박-김] 순환</div>
+        <h2 id="display-name" style="margin:0; color:var(--accent);">COMMAND CENTER</h2>
+        <div>보유 자금: <b id="money" style="font-size:1.8rem; color:var(--accent);">0</b> G</div>
     </div>
 
     <div class="main-container">
-        <div id="map-area">
-            <div id="battle-map">
-                <div id="grid-overlay"></div>
-            </div>
-        </div>
+        <div id="map-area"><div id="battle-map"><div id="grid-overlay"></div></div></div>
         <div id="info-panel">
             <div id="panel-content">
-                <p style="text-align:center; opacity:0.5; margin-top:100px;">타일을 클릭하여<br>영토 소유권을 배분하세요.</p>
+                <p style="text-align:center; opacity:0.5; margin-top:100px;">작전 지역을 선택하십시오.</p>
             </div>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = { databaseURL: "https://friendwargme-default-rtdb.firebaseio.com/" };
         const app = initializeApp(firebaseConfig);
@@ -88,10 +87,27 @@
         let myName = "";
         let selectedId = null;
 
-        window.startGame = function(name) {
+        const passwords = { "서민규": "140625", "박세찬": "1234**", "김만중": "98765" };
+        const unitIcons = { 'INFANTRY': '🎖️', 'TANK': '🚜', 'ARTILLERY': '💥', 'FIGHTER': '✈️' };
+
+        window.login = function(name) {
+            const pw = prompt(`${name} 사령관님, 비밀번호를 입력하십시오.`);
+            if (pw === passwords[name]) {
+                startGame(name);
+            } else {
+                alert("비밀번호가 일치하지 않습니다. 접근이 거부되었습니다.");
+            }
+        };
+
+        function startGame(name) {
             myName = name;
             document.getElementById('overlay').style.display = 'none';
+            document.getElementById('display-name').innerText = `HQ: ${myName}`;
             
+            onValue(ref(db, `players/${myName}/resources/money`), s => {
+                document.getElementById('money').innerText = (s.val() || 0).toLocaleString();
+            });
+
             onValue(ref(db, 'provinces'), (snapshot) => {
                 const grid = document.getElementById('grid-overlay');
                 const data = snapshot.val() || {};
@@ -102,7 +118,6 @@
                     const p = data[id] || { id: id, owner: "중립", terrain: "바다" };
                     const tile = document.createElement('div');
                     
-                    // 🎨 소유자별 배경 클래스 적용
                     let ownerClass = "";
                     if(p.owner === "서민규") ownerClass = "owner-mingyu";
                     else if(p.owner === "박세찬") ownerClass = "owner-sechan";
@@ -111,49 +126,32 @@
                     tile.className = `tile ${ownerClass} ${id === selectedId ? 'selected' : ''}`;
                     tile.innerHTML = `<span class="tile-id">${id}</span>`;
                     
+                    if (p.unit && p.unit.count > 0) {
+                        tile.innerHTML += `<div class="unit-marker"><span>${unitIcons[p.unit.type] || '🎖️'}</span><b>${p.unit.count}</b></div>`;
+                    }
+                    
                     tile.onclick = () => {
                         selectedId = id;
-                        
-                        const owners = ['중립', '서민규', '박세찬', '김만중'];
-                        let currentIdx = owners.indexOf(p.owner || '중립');
-                        let nextOwner = owners[(currentIdx + 1) % owners.length];
-                        
-                        // ⚠️ 오직 owner만 업데이트하여 지형(terrain)을 보존합니다.
-                        update(ref(db, `provinces/${id}`), {
-                            owner: nextOwner,
-                            id: id
-                        });
-
-                        updateInfoPanel(p, nextOwner);
+                        updateInfoPanel(p);
                         document.querySelectorAll('.tile').forEach(t => t.classList.remove('selected'));
                         tile.classList.add('selected');
                     };
                     grid.appendChild(tile);
                 }
             });
-        };
+        }
 
-        function updateInfoPanel(p, nextOwner) {
+        function updateInfoPanel(p) {
             const content = document.getElementById('panel-content');
-            // p.owner는 DB 갱신 전 값일 수 있으므로 nextOwner를 활용
-            const displayOwner = nextOwner || p.owner || "중립";
-            
             content.innerHTML = `
-                <div class="info-header">
-                    <h2 style="margin:0;">${p.id} 구역</h2>
-                    <h1 style="color:var(--accent); margin:10px 0;">${displayOwner}</h1>
-                </div>
+                <h2 style="margin:0;">${p.id} 구역</h2>
                 <div class="stat-grid">
-                    <div class="stat-item"><b>보존된 지형</b><br>${p.terrain || '바다'}</div>
-                    <div class="stat-item"><b>상태</b><br>영토 점령 중</div>
+                    <div class="stat-item"><b>지형</b><br>${p.terrain || '바다'}</div>
+                    <div class="stat-item"><b>소유</b><br>${p.owner || '중립'}</div>
+                    <div class="stat-item"><b>군사력</b><br>${p.unit?.count || 0}</div>
+                    <div class="stat-item"><b>인구</b><br>${(p.population || 0).toLocaleString()}</div>
                 </div>
-                <div style="margin-top:30px; padding:15px; background:rgba(255,255,255,0.05); border-radius:10px;">
-                    <p style="font-size:0.85rem; line-height:1.6;">
-                        ✅ <b>지형 고정 완료</b><br>
-                        이제 클릭해도 지형은 바뀌지 않습니다.<br>
-                        반투명한 색상이 타일 전체를 덮어 영토를 표시합니다.
-                    </p>
-                </div>
+                <button class="cmd-btn" style="background:#3b82f6" onclick="alert('명령 대기 중...')">작전 개시</button>
             `;
         }
     </script>
