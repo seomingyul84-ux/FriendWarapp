@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>FriendWarapp - 임시 타이틀</title>
+    <title>FriendWarapp - ORN 전략 지휘부</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root { 
@@ -11,85 +11,37 @@
         }
         body { margin: 0; background: var(--bg); color: #f8fafc; font-family: 'Noto Sans KR', sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
         
-        /* 시작 오버레이 */
         #overlay { position: fixed; inset: 0; background: rgba(2, 6, 23, 0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(10px); }
-        .btn-group button { padding: 1.5rem 3rem; margin: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.2rem; color: white; transition: 0.2s; }
-        .btn-group button:hover { transform: scale(1.05); filter: brightness(1.2); }
+        .btn-group { display: flex; flex-direction: column; gap: 15px; }
+        .login-btn { padding: 1.5rem 4rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.4rem; color: white; transition: 0.3s; width: 300px; }
+        .login-btn:hover { transform: translateY(-3px); filter: brightness(1.2); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
 
-        /* 헤더 */
         .header { height: 70px; padding: 0 2rem; background: var(--card); border-bottom: 2px solid #334155; display: flex; justify-content: space-between; align-items: center; z-index: 500; }
-
-        /* 메인 컨테이너 */
         .main-container { display: flex; flex: 1; overflow: hidden; }
-        
-        #map-area { 
-            flex: 1; 
-            position: relative; 
-            overflow: auto; 
-            background: #000; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center;
-        }
+        #map-area { flex: 1; position: relative; overflow: auto; background: #000; display: flex; align-items: center; justify-content: center; }
+        #battle-map { position: relative; width: 1024px; height: 768px; background-image: url('./map.png'); background-size: 100% 100%; border: 4px solid #475569; }
+        #grid-overlay { display: grid; grid-template-columns: repeat(16, 1fr); grid-template-rows: repeat(16, 1fr); width: 100%; height: 100%; }
 
-        #battle-map { 
-            position: relative; 
-            width: 1024px; 
-            height: 768px; 
-            /* ⚠️ map.png로 수정 완료 */
-            background-image: url('./map.png'); 
-            background-size: 100% 100%;
-            border: 4px solid #475569;
-            box-shadow: 0 0 40px rgba(0,0,0,0.5);
-        }
-
-        #grid-overlay { 
-            display: grid; 
-            grid-template-columns: repeat(16, 1fr); 
-            grid-template-rows: repeat(16, 1fr); 
-            width: 100%; 
-            height: 100%; 
-        }
-
-        .tile { 
-            border: 0.5px solid rgba(255, 255, 255, 0.05); 
-            cursor: pointer; 
-            position: relative;
-            transition: 0.1s;
-        }
-
-        /* 세력별 점령지 표시 */
-        .tile.owner-mingyu { background: rgba(34, 197, 94, 0.2); border: 0.5px solid var(--mingyu); }
-        .tile.owner-sechan { background: rgba(59, 130, 246, 0.2); border: 0.5px solid var(--sechan); }
-        .tile.owner-manjung { background: rgba(239, 68, 68, 0.2); border: 0.5px solid var(--manjung); }
-
-        .tile:hover { background: rgba(56, 189, 248, 0.2); border: 1.5px solid #fff; z-index: 10; }
+        .tile { border: 0.5px solid rgba(255, 255, 255, 0.05); cursor: pointer; position: relative; }
+        .tile.owner-mingyu { background: rgba(34, 197, 94, 0.25); }
+        .tile.owner-sechan { background: rgba(59, 130, 246, 0.25); }
+        .tile.owner-manjung { background: rgba(239, 68, 68, 0.25); }
+        .tile:hover { background: rgba(56, 189, 248, 0.2); border: 1.2px solid #fff; z-index: 10; }
         .tile.selected { outline: 2px solid var(--accent); z-index: 15; box-shadow: inset 0 0 15px var(--accent); }
 
-        .tile-id { font-size: 0.5rem; position: absolute; top: 2px; left: 2px; opacity: 0.4; pointer-events: none; }
-        .unit-marker { 
-            position: absolute; width: 100%; height: 100%; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            pointer-events: none; text-shadow: 1px 1px 3px #000; 
-        }
-
-        /* 정보 패널 */
-        #info-panel { 
-            width: 380px; background: var(--card); border-left: 2px solid #334155; 
-            padding: 1.5rem; box-sizing: border-box; overflow-y: auto; backdrop-filter: blur(5px);
-        }
+        #info-panel { width: 380px; background: var(--card); border-left: 2px solid #334155; padding: 1.5rem; box-sizing: border-box; overflow-y: auto; }
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; }
         .stat-item { background: rgba(15, 23, 42, 0.8); padding: 10px; border-radius: 5px; border: 1px solid #334155; }
-        .cmd-btn { width: 100%; margin-top: 10px; padding: 14px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: white; transition: 0.2s; }
+        .cmd-btn { width: 100%; margin-top: 10px; padding: 14px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: white; }
     </style>
 </head>
 <body>
     <div id="overlay">
         <h1 style="font-size: 3rem; margin-bottom: 2rem; letter-spacing: 10px;">ORN STRATEGY</h1>
         <div class="btn-group">
-            <button style="background:var(--mingyu)" onclick="login('서민규')">서민규</button>
-            <button style="background:var(--sechan)" onclick="login('박세찬')">박세찬</button>
-            <button style="background:var(--manjung)" onclick="login('김만중')">김만중</button>
+            <button class="login-btn" style="background:var(--mingyu)" data-user="서민규">서민규</button>
+            <button class="login-btn" style="background:var(--sechan)" data-user="박세찬">박세찬</button>
+            <button class="login-btn" style="background:var(--manjung)" data-user="김만중">김만중</button>
         </div>
     </div>
 
@@ -99,16 +51,8 @@
     </div>
 
     <div class="main-container">
-        <div id="map-area">
-            <div id="battle-map">
-                <div id="grid-overlay"></div>
-            </div>
-        </div>
-        <div id="info-panel">
-            <div id="panel-content">
-                <p style="text-align:center; opacity:0.5; margin-top:100px;">작전 지역을 선택하십시오.</p>
-            </div>
-        </div>
+        <div id="map-area"><div id="battle-map"><div id="grid-overlay"></div></div></div>
+        <div id="info-panel"><div id="panel-content"><p style="text-align:center; opacity:0.5; margin-top:100px;">작전 지역을 선택하십시오.</p></div></div>
     </div>
 
     <script type="module">
@@ -118,31 +62,36 @@
         const firebaseConfig = { databaseURL: "https://friendwargme-default-rtdb.firebaseio.com/" };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+        
         let myName = "";
         let selectedId = null;
-
         const passwords = { "서민규": "140625", "박세찬": "1234**", "김만중": "98765" };
-        const unitIcons = { 'INFANTRY': '🎖️', 'TANK': '🚜', 'ARTILLERY': '💥', 'FIGHTER': '✈️', 'BOMBER': '💣' };
 
-        // 비밀번호 확인 로직
-        window.login = function(name) {
-            const pw = prompt( '비밀번호를 입력하십시오.`);
-            if (pw === passwords[name]) {
-                startGame(name);
-            } else {
-                alert("비밀번호가 일치하지 않습니다.");
-            }
-        };
+        // 🛡️ 버튼 클릭 이벤트 리스너 (확실한 작동 보장)
+        document.querySelectorAll('.login-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const user = btn.getAttribute('data-user');
+                const pw = prompt(`${user} 사령관님, 비밀번호를 입력하십시오.`);
+                
+                if (pw === passwords[user]) {
+                    startGame(user);
+                } else if (pw !== null) {
+                    alert("비밀번호가 틀렸습니다.");
+                }
+            });
+        });
 
         function startGame(name) {
             myName = name;
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('display-name').innerText = `HQ: ${myName}`;
             
+            // 자원 로드
             onValue(ref(db, `players/${myName}/resources/money`), s => {
                 document.getElementById('money').innerText = (s.val() || 0).toLocaleString();
             });
 
+            // 지도 로드
             onValue(ref(db, 'provinces'), (snapshot) => {
                 const grid = document.getElementById('grid-overlay');
                 const data = snapshot.val() || {};
@@ -153,21 +102,12 @@
                     const p = data[id] || {id: id, owner: "중립", terrain: "바다"};
                     const tile = document.createElement('div');
                     
-                    let ownerClass = "";
-                    if(p.owner === "서민규") ownerClass = "owner-mingyu";
-                    else if(p.owner === "박세찬") ownerClass = "owner-sechan";
-                    else if(p.owner === "김만중") ownerClass = "owner-manjung";
-
+                    let ownerClass = p.owner === "서민규" ? "owner-mingyu" : (p.owner === "박세찬" ? "owner-sechan" : (p.owner === "김만중" ? "owner-manjung" : ""));
                     tile.className = `tile ${ownerClass} ${id === selectedId ? 'selected' : ''}`;
-                    tile.innerHTML = `<span class="tile-id">${id}</span>`;
+                    tile.innerHTML = `<span style="font-size:0.5rem; position:absolute; top:2px; left:2px; opacity:0.4;">${id}</span>`;
                     
                     if (p.unit && p.unit.count > 0) {
-                        tile.innerHTML += `
-                            <div class="unit-marker">
-                                <span style="font-size:1.2rem;">${unitIcons[p.unit.type] || '🎖️'}</span>
-                                <span style="font-size:0.7rem; font-weight:bold;">${p.unit.count}</span>
-                            </div>
-                        `;
+                        tile.innerHTML += `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none;">🎖️<b>${p.unit.count}</b></div>`;
                     }
                     
                     tile.onclick = () => {
@@ -183,24 +123,15 @@
 
         function updateInfoPanel(p) {
             const content = document.getElementById('panel-content');
-            let ownerColor = p.owner === "서민규" ? "var(--mingyu)" : (p.owner === "박세찬" ? "var(--sechan)" : "var(--manjung)");
-            if (p.owner === "중립") ownerColor = "#94a3b8";
-
             content.innerHTML = `
-                <div class="info-header">
-                    <h2 style="margin:0; color:${ownerColor}">${p.id} 구역</h2>
-                    <small>통제: ${p.owner || '중립'}</small>
-                </div>
-                <div class="stat-grid" style="margin-top:1rem;">
+                <h2>${p.id} 구역</h2>
+                <div class="stat-grid">
                     <div class="stat-item"><b>지형</b><br>${p.terrain || '바다'}</div>
+                    <div class="stat-item"><b>소유</b><br>${p.owner || '중립'}</div>
+                    <div class="stat-item"><b>군사</b><br>${p.unit?.count || 0}</div>
                     <div class="stat-item"><b>인구</b><br>${(p.population || 0).toLocaleString()}</div>
-                    <div class="stat-item"><b>주둔군</b><br>${p.unit?.type || '없음'}</div>
-                    <div class="stat-item"><b>규모</b><br>${p.unit?.count || 0}</div>
                 </div>
-                <div style="margin-top:1.5rem;">
-                    <button class="cmd-btn" style="background:#3b82f6" onclick="alert('이동 좌표를 설정하십시오.')">군단 전개</button>
-                    <button class="cmd-btn" style="background:#22c55e" onclick="alert('자원이 부족합니다.')">부대 징집</button>
-                </div>
+                <button class="cmd-btn" style="background:#3b82f6" onclick="alert('명령 대기 중')">작전 개시</button>
             `;
         }
     </script>
