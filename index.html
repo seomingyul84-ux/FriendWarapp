@@ -18,10 +18,10 @@
         #map-area { flex: 1; position: relative; overflow: auto; background: #000; display: flex; align-items: center; justify-content: center; }
         #battle-map { position: relative; width: 1024px; height: 768px; background-image: url('./map.png'); background-size: 100% 100%; border: 4px solid #475569; }
         #grid-overlay { display: grid; grid-template-columns: repeat(16, 1fr); grid-template-rows: repeat(16, 1fr); width: 100%; height: 100%; }
-        .tile { border: 0.5px solid rgba(255, 255, 255, 0.05); cursor: pointer; position: relative; transition: 0.1s; box-sizing: border-box; }
-        .tile.owner-mingyu { background: rgba(34, 197, 94, 0.25); border: 0.5px solid var(--mingyu); }
-        .tile.owner-sechan { background: rgba(59, 130, 246, 0.25); border: 0.5px solid var(--sechan); }
-        .tile.owner-manjung { background: rgba(239, 68, 68, 0.25); border: 0.5px solid var(--manjung); }
+        .tile { border: 0.5px solid rgba(255, 255, 255, 0.05); cursor: pointer; position: relative; box-sizing: border-box; }
+        .tile.owner-mingyu { background: rgba(34, 197, 94, 0.3); border: 0.5px solid var(--mingyu); }
+        .tile.owner-sechan { background: rgba(59, 130, 246, 0.3); border: 0.5px solid var(--sechan); }
+        .tile.owner-manjung { background: rgba(239, 68, 68, 0.3); border: 0.5px solid var(--manjung); }
         .tile:hover { background: rgba(255, 255, 255, 0.2); border: 1.5px solid #fff; z-index: 10; }
         .tile.selected { outline: 3px solid var(--accent); z-index: 15; box-shadow: inset 0 0 20px var(--accent); }
         .tile-id { font-size: 0.5rem; position: absolute; top: 2px; left: 2px; opacity: 0.4; pointer-events: none; }
@@ -81,28 +81,29 @@
                 document.getElementById('money').innerText = (s.val() || 0).toLocaleString();
             });
 
-            // ⚠️ [수정] 데이터가 없어도 무조건 256개 타일을 그리는 로직
             onValue(ref(db, 'provinces'), (snapshot) => {
                 const grid = document.getElementById('grid-overlay');
-                const data = snapshot.val() || {}; // 데이터가 아예 없으면 빈 객체 사용
+                const data = snapshot.val() || {};
                 grid.innerHTML = "";
 
                 for(let i=1; i<=256; i++) {
                     const id = `P${i}`;
-                    // 데이터가 없으면(undefined) 기본값(중립/바다) 생성
                     const p = data[id] || { id: id, owner: "중립", terrain: "바다", population: 0 };
                     
                     const tile = document.createElement('div');
+                    
+                    // ✅ [안전 강화] p.owner가 문자열인지 확인 후 색상 입히기
+                    let ownerStr = String(p.owner || "중립");
                     let ownerClass = "";
-                    if(p.owner === "서민규") ownerClass = "owner-mingyu";
-                    else if(p.owner === "박세찬") ownerClass = "owner-sechan";
-                    else if(p.owner === "김만중") ownerClass = "owner-manjung";
+                    if(ownerStr.includes("서민규")) ownerClass = "owner-mingyu";
+                    else if(ownerStr.includes("박세찬")) ownerClass = "owner-sechan";
+                    else if(ownerStr.includes("김만중")) ownerClass = "owner-manjung";
 
                     tile.className = `tile ${ownerClass} ${id === selectedId ? 'selected' : ''}`;
                     tile.innerHTML = `<span class="tile-id">${id}</span>`;
                     
                     if (p.unit && p.unit.count > 0) {
-                        tile.innerHTML += `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; font-weight:bold;">🎖️${p.unit.count}</div>`;
+                        tile.innerHTML += `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; font-weight:bold; text-shadow:1px 1px 2px #000;">🎖️${p.unit.count}</div>`;
                     }
 
                     tile.onclick = () => {
@@ -118,12 +119,17 @@
 
         function updateInfoPanel(p) {
             const content = document.getElementById('panel-content');
-            const isMyLand = (p.owner === myName);
-            let ownerColor = p.owner === "서민규" ? "var(--mingyu)" : (p.owner === "박세찬" ? "var(--sechan)" : (p.owner === "김만중" ? "var(--manjung)" : "#94a3b8"));
+            // ✅ 내 땅인지 체크할 때도 안전하게 문자열 비교
+            const isMyLand = (String(p.owner) === myName);
+            let ownerStr = String(p.owner || "중립");
+            let ownerColor = "#94a3b8";
+            if(ownerStr.includes("서민규")) ownerColor = "var(--mingyu)";
+            else if(ownerStr.includes("박세찬")) ownerColor = "var(--sechan)";
+            else if(ownerStr.includes("김만중")) ownerColor = "var(--manjung)";
 
             content.innerHTML = `
                 <h2 style="margin:0; color:${ownerColor}">${p.id} 구역</h2>
-                <p style="margin:5px 0; font-size:0.9rem; opacity:0.8;">점령군: ${p.owner || '중립'}</p>
+                <p style="margin:5px 0; font-size:0.9rem; opacity:0.8;">점령군: ${ownerStr}</p>
                 <div class="stat-grid">
                     <div class="stat-item"><b>지형</b><br>${p.terrain || '바다'}</div>
                     <div class="stat-item"><b>인구</b><br>${(p.population || 0).toLocaleString()}</div>
@@ -132,12 +138,12 @@
                 </div>
                 <div style="margin-top:20px; display:flex; flex-direction:column; gap:10px;">
                     ${isMyLand ? `
-                        <button class="cmd-btn" style="background:var(--mingyu)" onclick="alert('모집 준비 중')">🎖️ 신병 모집</button>
-                        <button class="cmd-btn" style="background:#8b5cf6" onclick="alert('건설 대기 중')">🏗️ 시설 건설</button>
-                    ` : (p.owner === "중립" ? `
-                        <button class="cmd-btn" style="background:var(--accent)" onclick="alert('점령 시도')">🚩 무혈 점령</button>
+                        <button class="cmd-btn" style="background:var(--mingyu)" onclick="alert('모집 대기')">🎖️ 신병 모집</button>
+                        <button class="cmd-btn" style="background:#8b5cf6" onclick="alert('건설 대기')">🏗️ 시설 건설</button>
+                    ` : (ownerStr === "중립" ? `
+                        <button class="cmd-btn" style="background:var(--accent)" onclick="alert('점령 대기')">🚩 무혈 점령</button>
                     ` : `
-                        <button class="cmd-btn" style="background:var(--manjung)" onclick="alert('공격 준비')">🔥 전면 공격</button>
+                        <button class="cmd-btn" style="background:var(--manjung)" onclick="alert('전쟁 대기')">🔥 전면 공격</button>
                     `)}
                 </div>
             `;
