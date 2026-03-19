@@ -2,45 +2,57 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>FriendWarapp - ORN 전략 지휘부</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root { 
             --bg: #020617; --card: rgba(30, 41, 59, 0.9); --accent: #38bdf8; 
             --mingyu: #22c55e; --sechan: #3b82f6; --manjung: #ef4444; 
         }
-        body { margin: 0; background: var(--bg); color: #f8fafc; font-family: 'Noto Sans KR', sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
+        body { margin: 0; background: var(--bg); color: #f8fafc; font-family: 'Noto Sans KR', sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; font-size: 13px; }
+        
+        /* 헤더/오버레이 UI 축소 */
         #overlay { position: fixed; inset: 0; background: rgba(2, 6, 23, 0.98); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(15px); }
-        .btn-group { display: flex; flex-direction: column; gap: 15px; }
-        .login-btn { padding: 1.5rem 5rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.5rem; color: white; transition: 0.3s; width: 350px; }
-        .header { height: 70px; padding: 0 2rem; background: var(--card); border-bottom: 2px solid #334155; display: flex; justify-content: space-between; align-items: center; z-index: 500; }
+        .login-btn { padding: 1rem 3rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1rem; color: white; margin-bottom: 10px; width: 280px; }
+        .header { height: 50px; padding: 0 1rem; background: var(--card); border-bottom: 2px solid #334155; display: flex; justify-content: space-between; align-items: center; z-index: 500; }
+        
+        /* 메인 구조 */
         .main-container { display: flex; flex: 1; overflow: hidden; }
-        #map-area { flex: 1; position: relative; overflow: auto; background: #000; display: flex; align-items: center; justify-content: center; }
-        #battle-map { position: relative; width: 1024px; height: 768px; background-image: url('./map.png'); background-size: 100% 100%; border: 4px solid #475569; }
+        #map-area { flex: 1; position: relative; overflow: hidden; background: #000; cursor: grab; touch-action: none; }
+        
+        /* 맵 확대/축소 컨테이너 */
+        #map-container { position: absolute; transform-origin: 0 0; transition: transform 0.1s ease-out; }
+        #battle-map { 
+            position: relative; width: 1024px; height: 768px; 
+            background-image: url('./map.png'); background-size: 100% 100%; 
+            border: 2px solid #475569;
+        }
         #grid-overlay { display: grid; grid-template-columns: repeat(16, 1fr); grid-template-rows: repeat(16, 1fr); width: 100%; height: 100%; }
-        
-        .tile { border: 0.5px solid rgba(255, 255, 255, 0.05); cursor: pointer; position: relative; box-sizing: border-box; }
-        .tile.owner-mingyu { background: rgba(34, 197, 94, 0.25); border: 0.5px solid var(--mingyu); }
-        .tile.owner-sechan { background: rgba(59, 130, 246, 0.25); border: 0.5px solid var(--sechan); }
-        .tile.owner-manjung { background: rgba(239, 68, 68, 0.25); border: 0.5px solid var(--manjung); }
-        .progress-tag { position: absolute; bottom: 2px; right: 2px; background: #fbbf24; color: #000; font-size: 0.6rem; padding: 1px 3px; border-radius: 2px; font-weight: bold; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0.5; } }
 
-        #info-panel { width: 400px; background: var(--card); border-left: 2px solid #334155; padding: 1.5rem; box-sizing: border-box; overflow-y: auto; }
-        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9rem; margin: 10px 0; }
-        .stat-item { background: rgba(15, 23, 42, 0.9); padding: 12px; border-radius: 6px; border: 1px solid #334155; }
-        .cmd-btn { width: 100%; margin-top: 10px; padding: 15px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; color: white; transition: 0.2s; font-size: 1rem; }
+        /* 타일 및 군대 표시 강화 */
+        .tile { border: 0.3px solid rgba(255, 255, 255, 0.1); position: relative; box-sizing: border-box; }
+        .tile.owner-mingyu { background: rgba(34, 197, 94, 0.25); }
+        .tile.owner-sechan { background: rgba(59, 130, 246, 0.25); }
+        .tile.owner-manjung { background: rgba(239, 68, 68, 0.25); }
         
-        /* 📜 상세 메뉴 스타일 */
-        #select-menu { margin-top: 15px; display: none; background: rgba(15, 23, 42, 0.8); border-radius: 8px; border: 1px solid #475569; padding: 10px; }
-        .option-item { background: #1e293b; padding: 12px; margin-bottom: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid transparent; transition: 0.2s; }
-        .option-item:hover { border-color: var(--accent); background: #334155; transform: translateX(5px); }
-        .option-item span:last-child { font-size: 0.8rem; color: #94a3b8; }
+        .unit-badge { 
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; 
+            font-size: 14px; font-weight: 800; color: #fff; text-shadow: 0 0 4px #000, 1px 1px 0 #000;
+            pointer-events: none; z-index: 5;
+        }
+        .tile-id { font-size: 9px; position: absolute; top: 1px; left: 1px; opacity: 0.5; }
+
+        /* 패널 축소 */
+        #info-panel { width: 300px; background: var(--card); border-left: 2px solid #334155; padding: 1rem; overflow-y: auto; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin: 8px 0; }
+        .stat-item { background: rgba(15, 23, 42, 0.9); padding: 8px; border-radius: 4px; border: 1px solid #334155; font-size: 12px; }
+        .cmd-btn { width: 100%; margin-top: 5px; padding: 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; color: white; font-size: 12px; }
     </style>
 </head>
 <body>
     <div id="overlay">
-        <h1 style="font-size: 3.5rem; margin-bottom: 2.5rem; letter-spacing: 12px; color: var(--accent);">ORN STRATEGY</h1>
+        <h2 style="letter-spacing: 8px; color: var(--accent);">ORN STRATEGY</h2>
         <div class="btn-group">
             <button class="login-btn" style="background:var(--mingyu)" data-user="서민규">서민규 사령관</button>
             <button class="login-btn" style="background:var(--sechan)" data-user="박세찬">박세찬 사령관</button>
@@ -49,43 +61,37 @@
     </div>
 
     <div class="header">
-        <h2 id="display-name" style="margin:0; color:var(--accent);">COMMAND CENTER</h2>
-        <div>예산: <b id="money" style="font-size:2rem; color:var(--accent);">0</b> G</div>
+        <div id="display-name" style="font-weight:bold; color:var(--accent);">HQ</div>
+        <div style="font-size: 12px;">예산: <b id="money" style="color:var(--accent); font-size:16px;">0</b> G</div>
     </div>
 
     <div class="main-container">
-        <div id="map-area"><div id="battle-map"><div id="grid-overlay"></div></div></div>
-        <div id="info-panel"><div id="panel-content"><p style="text-align:center; opacity:0.5; margin-top:150px;">구역을 선택하십시오.</p></div></div>
+        <div id="map-area">
+            <div id="map-container">
+                <div id="battle-map">
+                    <div id="grid-overlay"></div>
+                </div>
+            </div>
+        </div>
+        <div id="info-panel"><div id="panel-content">구역 선택</div></div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = { databaseURL: "https://friendwargme-default-rtdb.firebaseio.com/" };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        let myName = "";
-        let selectedId = null;
-        let selectedProvinceData = null;
+        let myName = "", selectedId = null, scale = 1, offsetX = 0, offsetY = 0;
         const passwords = { "서민규": "140625", "박세찬": "1234**", "김만중": "98765" };
-
-        const buildOptions = [
-            { id: 'mil', name: '🏭 군수 공장', cost: 5000, time: 3 },
-            { id: 'hvy', name: '🏗️ 중공업 단지', cost: 8000, time: 5 }
-        ];
-        const unitOptions = [
-            { id: 'inf', name: '🎖️ 보병 여단', cost: 1000, time: 2 },
-            { id: 'tnk', name: '🚜 기갑 대대', cost: 3000, time: 4 }
-        ];
 
         document.querySelectorAll('.login-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const user = btn.getAttribute('data-user');
                 const pw = prompt(`${user} 사령관님, 보안 코드를 입력하십시오.`);
                 if (pw === passwords[user]) startGame(user);
-                else if (pw !== null) alert("보안 코드가 일치하지 않습니다.");
             });
         });
 
@@ -93,9 +99,15 @@
             myName = name;
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('display-name').innerText = `HQ: ${myName}`;
+            initMapControl();
+            syncData();
+            startEconomicCycle();
+        }
 
+        // 🔄 데이터 동기화 및 군대 시각화
+        function syncData() {
             onValue(ref(db, `players/${myName}/resources/money`), s => {
-                document.getElementById('money').innerText = (s.val() || 0).toLocaleString();
+                document.getElementById('money').innerText = Math.floor(s.val() || 0).toLocaleString();
             });
 
             onValue(ref(db, 'provinces'), (snapshot) => {
@@ -105,83 +117,101 @@
 
                 for(let i=1; i<=256; i++) {
                     const id = `P${i}`;
-                    const p = data[id] || { id: id, owner: "중립", terrain: "바다" };
-                    if(id === selectedId) selectedProvinceData = p;
-
+                    const p = data[id] || { id: id, owner: "중립", population: 50000 };
                     const tile = document.createElement('div');
+                    
                     let ownerStr = String(p.owner || "중립");
                     let ownerClass = ownerStr.includes("서민규") ? "owner-mingyu" : (ownerStr.includes("박세찬") ? "owner-sechan" : (ownerStr.includes("김만중") ? "owner-manjung" : ""));
 
                     tile.className = `tile ${ownerClass} ${id === selectedId ? 'selected' : ''}`;
                     tile.innerHTML = `<span class="tile-id">${id}</span>`;
                     
-                    if (p.work) tile.innerHTML += `<div class="progress-tag">⏳${p.work.rem}</div>`;
-                    if (p.unit?.count > 0) tile.innerHTML += `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; font-weight:bold;">🎖️${p.unit.count}</div>`;
+                    // 🎖️ 군대 위치 강조 표시
+                    if (p.unit && p.unit.count > 0) {
+                        tile.innerHTML += `<div class="unit-badge">🎖️${p.unit.count}</div>`;
+                    }
 
                     tile.onclick = () => {
                         selectedId = id;
-                        selectedProvinceData = p;
                         updateInfoPanel(p);
-                        document.querySelectorAll('.tile').forEach(t => t.classList.remove('selected'));
-                        tile.classList.add('selected');
+                        document.querySelectorAll('.tile').forEach(t => t.style.outline = "none");
+                        tile.style.outline = "2px solid var(--accent)";
                     };
                     grid.appendChild(tile);
                 }
-                if(selectedId && selectedProvinceData) updateInfoPanel(selectedProvinceData);
             });
+        }
+
+        // 📈 경제/인구 시스템 (24시간 기준 자동 계산)
+        function startEconomicCycle() {
+            setInterval(async () => {
+                const snap = await get(ref(db, 'provinces'));
+                const data = snap.val() || {};
+                let totalPop = 0;
+                let updates = {};
+
+                for(let id in data) {
+                    let p = data[id];
+                    // 인구 5% 상승 (24시간 환산 시 10분당 약 0.034% 상승 적용)
+                    let newPop = Math.floor((p.population || 50000) * 1.00034);
+                    updates[`provinces/${id}/population`] = newPop;
+                    if(p.owner === myName) totalPop += newPop;
+                }
+                
+                // 자산 증가 (인구 / 50)
+                const currentMoneySnap = await get(ref(db, `players/${myName}/resources/money`));
+                const newMoney = (currentMoneySnap.val() || 0) + (totalPop / 50 / 144); // 10분 단위 지급
+                updates[`players/${myName}/resources/money`] = newMoney;
+                
+                update(ref(db), updates);
+            }, 600000); // 10분마다 실행 (현실감 있게 시뮬레이션)
+        }
+
+        // 🔍 확대/축소 및 드래그 제어 (PC/모바일 공용)
+        function initMapControl() {
+            const area = document.getElementById('map-area');
+            const container = document.getElementById('map-container');
+
+            area.addEventListener('wheel', e => {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                scale = Math.min(Math.max(0.5, scale * delta), 3);
+                container.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+            });
+
+            let isDragging = false, startX, startY;
+            area.addEventListener('mousedown', e => { isDragging = true; startX = e.pageX - offsetX; startY = e.pageY - offsetY; });
+            window.addEventListener('mouseup', () => isDragging = false);
+            window.addEventListener('mousemove', e => {
+                if (!isDragging) return;
+                offsetX = e.pageX - startX;
+                offsetY = e.pageY - startY;
+                container.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+            });
+
+            // 모바일 터치 (간략화된 줌)
+            area.addEventListener('touchstart', e => { if(e.touches.length === 1) { isDragging = true; startX = e.touches[0].pageX - offsetX; startY = e.touches[0].pageY - offsetY; } });
+            area.addEventListener('touchmove', e => {
+                if (!isDragging || e.touches.length > 1) return;
+                offsetX = e.touches[0].pageX - startX;
+                offsetY = e.touches[0].pageY - startY;
+                container.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+            });
+            area.addEventListener('touchend', () => isDragging = false);
         }
 
         function updateInfoPanel(p) {
             const content = document.getElementById('panel-content');
-            const isMyLand = (String(p.owner || "") === myName);
-            let ownerColor = p.owner === "서민규" ? "var(--mingyu)" : (p.owner === "박세찬" ? "var(--sechan)" : (p.owner === "김만중" ? "var(--manjung)" : "#94a3b8"));
-
             content.innerHTML = `
-                <h2 style="margin:0; color:${ownerColor}">${p.id} 구역</h2>
-                <p style="margin:5px 0; font-size:0.9rem; opacity:0.8;">통제: ${p.owner || '중립'}</p>
+                <h3 style="margin:0;">${p.id} 구역</h3>
                 <div class="stat-grid">
-                    <div class="stat-item"><b>지형</b><br>${p.terrain || '바다'}</div>
-                    <div class="stat-item"><b>인구</b><br>${(p.population || 0).toLocaleString()}</div>
-                    <div class="stat-item">🏭 군수: ${p.factories?.military || 0}</div>
-                    <div class="stat-item">🏗️ 공업: ${p.factories?.heavy_ind || 0}</div>
+                    <div class="stat-item">👥 인구<br>${(p.population || 50000).toLocaleString()}</div>
+                    <div class="stat-item">🚩 소유<br>${p.owner || '중립'}</div>
                 </div>
-                ${p.work ? `<div style="padding:10px; background:#451a03; border-radius:6px; margin:10px 0; font-size:0.8rem; border:1px solid #f59e0b; color:#fbbf24;">🚧 진행 중: ${p.work.name} (남은 시간: ${p.work.rem})</div>` : ''}
-                <div style="margin-top:20px;">
-                    ${isMyLand ? `
-                        <button class="cmd-btn" style="background:var(--mingyu)" onclick="toggleMenu('recruit')">🎖️ 군사 모집</button>
-                        <button class="cmd-btn" style="background:#8b5cf6" onclick="toggleMenu('build')">🏗️ 시설 건설</button>
-                    ` : (p.owner === "중립" ? `<button class="cmd-btn" style="background:var(--accent)" onclick="alert('점령 준비')">🚩 무혈 점령</button>` : `<button class="cmd-btn" style="background:var(--manjung)" onclick="alert('공격 개시')">🔥 전면 공격</button>`)}
-                </div>
-                <div id="select-menu"></div>
+                <button class="cmd-btn" style="background:var(--mingyu)">모집</button>
+                <button class="cmd-btn" style="background:#8b5cf6">건설</button>
             `;
         }
-
-        // 🟢 글로벌 스코프를 위해 window 객체에 할당
-        window.toggleMenu = function(type) {
-            const menu = document.getElementById('select-menu');
-            menu.style.display = 'block';
-            const options = (type === 'build') ? buildOptions : unitOptions;
-            
-            menu.innerHTML = `<h3 style="font-size:0.9rem; color:var(--accent); margin-bottom:10px;">세부 명령 선택</h3>` + 
-                options.map(opt => `
-                <div class="option-item" onclick="executeCommand('${type}', '${opt.id}', ${opt.cost}, '${opt.name}', ${opt.time})">
-                    <span>${opt.name}</span>
-                    <span>${opt.cost}G / ${opt.time}턴</span>
-                </div>
-            `).join('');
-        };
-
-        window.executeCommand = function(type, optId, cost, name, time) {
-            if (!confirm(`${name}을(를) 시작하시겠습니까? (비용: ${cost}G)`)) return;
-            
-            // Firebase 실제 업데이트
-            update(ref(db, `provinces/${selectedId}`), {
-                work: { type: type, target: optId, name: name, rem: time }
-            }).then(() => {
-                alert(`[${selectedId}] 구역 - ${name} 작업이 시작되었습니다!`);
-                document.getElementById('select-menu').style.display = 'none';
-            });
-        };
     </script>
 </body>
 </html>
