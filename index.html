@@ -4,61 +4,85 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>FriendWarapp - ORN 전략 지휘부</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
     <style>
         :root { 
-            --bg: #020617; --card: rgba(30, 41, 59, 0.9); --accent: #38bdf8; 
+            --bg: #0f172a; --card: rgba(30, 41, 59, 0.95); --accent: #38bdf8; 
             --mingyu: #22c55e; --sechan: #3b82f6; --manjung: #ef4444; 
         }
-        body { margin: 0; background: var(--bg); color: #f8fafc; font-family: 'Noto Sans KR', sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; font-size: 11px; }
+        body { margin: 0; background: var(--bg); color: #f8fafc; font-family: 'Noto Sans KR', sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; font-size: 12px; }
         
-        .header { height: 40px; padding: 0 1rem; background: var(--card); border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; z-index: 1000; }
-        .main-container { display: flex; flex: 1; overflow: hidden; position: relative; }
-        
-        /* 맵 가시 영역 */
-        #map-viewport { flex: 1; position: relative; overflow: hidden; background: #000; touch-action: none; cursor: grab; }
-        #map-viewport:active { cursor: grabbing; }
+        /* 헤더 스타일업 */
+        .header { height: 50px; padding: 0 1.5rem; background: #020617; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; align-items: center; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .header b { font-family: 'Orbitron', sans-serif; letter-spacing: 1px; }
 
-        /* 지도 레이어 - scale 변화를 부드럽게 */
-        #map-layer { 
-            position: absolute; transform-origin: 0 0; 
-            width: 1024px; height: 768px;
-            transition: transform 0.05s linear; 
-        }
-        #battle-map { width: 100%; height: 100%; background-image: url('./map.png'); background-size: 100% 100%; position: relative; }
+        .main-container { display: flex; flex: 1; overflow: hidden; }
+        #map-viewport { flex: 1; position: relative; overflow: hidden; background: #000; touch-action: none; }
+        
+        /* 지도 레이어 */
+        #map-layer { position: absolute; transform-origin: 0 0; width: 1024px; height: 768px; }
+        #battle-map { width: 100%; height: 100%; background-image: url('./map.png'); background-size: 100% 100%; }
         #grid-overlay { display: grid; grid-template-columns: repeat(16, 1fr); grid-template-rows: repeat(16, 1fr); width: 100%; height: 100%; }
 
-        /* 타일 및 유닛 */
-        .tile { border: 0.1px solid rgba(255, 255, 255, 0.05); position: relative; cursor: pointer; }
-        .tile.owner-mingyu { background: rgba(34, 197, 94, 0.2); }
-        .tile.owner-sechan { background: rgba(59, 130, 246, 0.2); }
-        .tile.owner-manjung { background: rgba(239, 68, 68, 0.2); }
-        .unit-badge { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; text-shadow: 0 0 3px #000; pointer-events: none; }
+        /* 타일 가시성 */
+        .tile { border: 0.1px solid rgba(255,255,255,0.05); position: relative; cursor: pointer; }
+        .tile.owner-mingyu { background: rgba(34, 197, 94, 0.2); border: 0.2px solid var(--mingyu); }
+        .tile.owner-sechan { background: rgba(59, 130, 246, 0.2); border: 0.2px solid var(--sechan); }
+        .tile.owner-manjung { background: rgba(239, 68, 68, 0.2); border: 0.2px solid var(--manjung); }
+        .unit-badge { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; text-shadow: 0 0 5px #000; pointer-events: none; z-index: 10; }
 
-        /* 컨트롤 UI */
-        .zoom-ctrl { position: absolute; bottom: 15px; left: 15px; display: flex; flex-direction: column; gap: 5px; z-index: 1000; }
-        .z-btn { width: 35px; height: 35px; background: var(--card); border: 1px solid var(--accent); color: white; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        /* 🚨 정보 패널 혁신 (디자인 핵심) */
+        #info-panel { width: 320px; background: var(--card); border-left: 2px solid #334155; padding: 1.5rem; overflow-y: auto; z-index: 1000; backdrop-filter: blur(10px); }
+        .panel-title { font-family: 'Orbitron', sans-serif; color: var(--accent); border-bottom: 1px solid #475569; padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; }
+        .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .stat-row span:first-child { color: #94a3b8; }
 
-        #info-panel { width: 220px; background: var(--card); border-left: 1px solid #334155; padding: 1rem; overflow-y: auto; z-index: 1000; }
-        .cmd-btn { width: 100%; margin-top: 5px; padding: 8px; border: none; border-radius: 3px; font-weight: bold; cursor: pointer; color: white; font-size: 11px; }
+        /* 버튼 간지나게 변경 */
+        .cmd-btn { 
+            width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 6px; 
+            font-weight: bold; cursor: pointer; color: white; transition: 0.3s; 
+            text-transform: uppercase; letter-spacing: 1px; font-size: 12px;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+        }
+        .cmd-btn:active { transform: translateY(2px); box-shadow: none; }
 
-        #overlay { position: fixed; inset: 0; background: rgba(2, 6, 23, 0.98); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; }
-        .login-btn { padding: 1rem 3rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; margin-bottom: 10px; width: 250px; }
+        /* 📜 상세 메뉴 (세부 리스트) */
+        #sub-menu { 
+            margin-top: 15px; background: rgba(15, 23, 42, 0.9); border-radius: 8px; 
+            padding: 10px; border: 1px solid var(--accent); display: none; 
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .opt-card { 
+            padding: 10px; margin-bottom: 5px; background: #1e293b; border-radius: 4px; 
+            display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .opt-card:hover { border-color: var(--accent); background: #334155; }
+        .opt-card div { font-size: 10px; color: #94a3b8; }
+
+        /* 줌 컨트롤 */
+        .zoom-ctrl { position: absolute; bottom: 20px; left: 20px; display: flex; gap: 8px; z-index: 1000; }
+        .z-btn { width: 45px; height: 45px; background: #020617; border: 1px solid var(--accent); color: white; border-radius: 50%; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .z-btn:hover { background: var(--accent); color: #000; }
+
+        #overlay { position: fixed; inset: 0; background: #020617; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; }
     </style>
 </head>
 <body>
     <div id="overlay">
-        <h3 style="letter-spacing: 5px; color: var(--accent);">ORN STRATEGY</h3>
-        <div class="btn-group">
-            <button class="login-btn" style="background:var(--mingyu)" onclick="login('서민규')">서민규</button>
-            <button class="login-btn" style="background:var(--sechan)" onclick="login('박세찬')">박세찬</button>
-            <button class="login-btn" style="background:var(--manjung)" onclick="login('김만중')">김만중</button>
+        <h1 style="font-family:'Orbitron'; letter-spacing:10px; color:var(--accent);">ORN COMMAND</h1>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+            <button class="cmd-btn" style="background:var(--mingyu); width:280px;" onclick="login('서민규')">서민규 사령관 접속</button>
+            <button class="cmd-btn" style="background:var(--sechan); width:280px;" onclick="login('박세찬')">박세찬 사령관 접속</button>
+            <button class="cmd-btn" style="background:var(--manjung); width:280px;" onclick="login('김만중')">김만중 사령관 접속</button>
         </div>
     </div>
 
     <div class="header">
-        <div id="display-name" style="font-weight:bold; color:var(--accent);">HQ</div>
-        <div>예산: <b id="money" style="color:var(--accent);">0</b> G</div>
+        <div><span style="color:var(--accent); font-family:'Orbitron';">HQ:</span> <b id="user-name">-</b></div>
+        <div>CREDIT: <b id="money" style="color:var(--accent); font-size:18px;">0</b> <span style="font-size:10px; color:#94a3b8;">G</span></div>
     </div>
 
     <div class="main-container">
@@ -67,12 +91,20 @@
                 <div id="battle-map"><div id="grid-overlay"></div></div>
             </div>
             <div class="zoom-ctrl">
-                <button class="z-btn" onclick="manualZoom(1.1)">+</button>
-                <button class="z-btn" onclick="manualZoom(0.9)">-</button>
-                <button class="z-btn" onclick="resetView()" style="font-size:10px;">Reset</button>
+                <button class="z-btn" onclick="manualZoom(1.2)">+</button>
+                <button class="z-btn" onclick="manualZoom(0.8)">-</button>
+                <button class="z-btn" onclick="resetView()" style="font-size:10px;">🔄</button>
             </div>
         </div>
-        <div id="info-panel"><div id="panel-content">구역 선택</div></div>
+
+        <div id="info-panel">
+            <div id="panel-content">
+                <div style="text-align:center; margin-top:100px; opacity:0.3;">
+                    <p style="font-size:40px;">📡</p>
+                    <p>구역을 선택하여<br>지휘권을 행사하십시오.</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script type="module">
@@ -83,14 +115,18 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        let myName = "", selectedId = null, scale = 0.7, posX = 10, posY = 10;
+        let myName = "", selectedId = null, scale = 0.7, posX = 20, posY = 20;
         const passwords = { "서민규": "140625", "박세찬": "1234**", "김만중": "98765" };
 
+        const buildOpts = [{id:'mil', name:'군수 공장', cost:5000, time:3}, {id:'hvy', name:'중공업 단지', cost:8000, time:5}];
+        const unitOpts = [{id:'inf', name:'보병 여단', cost:1000, time:2}, {id:'tnk', name:'기갑 대대', cost:3000, time:4}];
+
         window.login = (user) => {
-            const pw = prompt(`${user} 사령관님, 보안 코드를 입력하십시오.`);
+            const pw = prompt(`${user} 사령관님, 코드를 입력하십시오.`);
             if (pw === passwords[user]) {
                 myName = user;
                 document.getElementById('overlay').style.display = 'none';
+                document.getElementById('user-name').innerText = myName;
                 initInteraction();
                 syncData();
             }
@@ -105,84 +141,92 @@
                 const grid = document.getElementById('grid-overlay');
                 const data = snapshot.val() || {};
                 grid.innerHTML = "";
-
                 for(let i=1; i<=256; i++) {
                     const id = `P${i}`;
                     const p = data[id] || { id: id, owner: "중립", population: 50000 };
                     const tile = document.createElement('div');
                     let ownerStr = String(p.owner || "중립");
                     let ownerClass = ownerStr.includes("서민규") ? "owner-mingyu" : (ownerStr.includes("박세찬") ? "owner-sechan" : (ownerStr.includes("김만중") ? "owner-manjung" : ""));
-
+                    
                     tile.className = `tile ${ownerClass}`;
-                    if(id === selectedId) tile.style.boxShadow = "inset 0 0 10px var(--accent)";
-                    tile.innerHTML = `<span style="font-size:7px; opacity:0.2; position:absolute; top:1px; left:1px;">${id}</span>`;
+                    if(id === selectedId) tile.style.outline = "2px solid var(--accent)";
                     if (p.unit?.count > 0) tile.innerHTML += `<div class="unit-badge">🎖️${p.unit.count}</div>`;
 
                     tile.onclick = (e) => {
-                        e.stopPropagation(); // 맵 드래그와 클릭 분리
+                        e.stopPropagation();
                         selectedId = id;
                         updateInfoPanel(p);
-                        syncData(); 
+                        syncData();
                     };
                     grid.appendChild(tile);
                 }
             });
         }
 
+        function updateInfoPanel(p) {
+            const panel = document.getElementById('panel-content');
+            const isMyLand = (String(p.owner || "") === myName);
+            
+            panel.innerHTML = `
+                <div class="panel-title">
+                    <span>SECTION ${p.id}</span>
+                    <span style="font-size:10px; color:#64748b;">LIVE FEED</span>
+                </div>
+                <div class="stat-row"><span>통제권</span><span style="color:var(--accent)">${p.owner || '중립'}</span></div>
+                <div class="stat-row"><span>거주 인구</span><span>${(p.population || 50000).toLocaleString()} 명</span></div>
+                <div class="stat-row"><span>지형 환경</span><span>${p.terrain || '평지'}</span></div>
+                
+                <div style="margin-top:20px;">
+                    ${isMyLand ? `
+                        <button class="cmd-btn" style="background:var(--mingyu)" onclick="openSubMenu('recruit')">🎖️ 병력 모집</button>
+                        <button class="cmd-btn" style="background:#8b5cf6" onclick="openSubMenu('build')">🏗️ 건축 명령</button>
+                    ` : `<button class="cmd-btn" style="background:var(--manjung)">🔥 전면 타격</button>`}
+                </div>
+                <div id="sub-menu"></div>
+            `;
+        }
+
+        window.openSubMenu = (type) => {
+            const menu = document.getElementById('sub-menu');
+            menu.style.display = 'block';
+            const opts = (type === 'build') ? buildOpts : unitOpts;
+            menu.innerHTML = `<p style="font-size:10px; margin-bottom:10px; color:var(--accent);">세부 항목을 선택하십시오.</p>` +
+                opts.map(o => `
+                <div class="opt-card" onclick="executeCommand('${o.name}', ${o.cost}, ${o.time})">
+                    <span>${o.name}</span>
+                    <div style="text-align:right;">${o.cost}G<br>${o.time}턴 소요</div>
+                </div>
+            `).join('');
+        };
+
+        window.executeCommand = (name, cost, time) => {
+            if(confirm(`${name} 작업을 시작하시겠습니까?`)) {
+                update(ref(db, `provinces/${selectedId}`), {
+                    work: { name, rem: time }
+                }).then(() => alert("명령이 하달되었습니다."));
+            }
+        };
+
         function initInteraction() {
             const viewport = document.getElementById('map-viewport');
             const layer = document.getElementById('map-layer');
+            const apply = () => layer.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`;
 
-            const applyTransform = () => {
-                layer.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`;
-            };
+            let isDrag = false, sx, sy;
+            viewport.onmousedown = (e) => { isDrag = true; sx = e.clientX - posX; sy = e.clientY - posY; };
+            window.onmousemove = (e) => { if(!isDrag) return; posX = e.clientX - sx; posY = e.clientY - sy; apply(); };
+            window.onmouseup = () => isDrag = false;
 
-            // 1. 드래그 시스템 (클릭 미스 방지 포함)
-            let isDragging = false, startX, startY, moved = false;
-            const onStart = (e) => {
-                isDragging = true; moved = false;
-                const touch = e.touches ? e.touches[0] : e;
-                startX = touch.clientX - posX; startY = touch.clientY - posY;
-            };
-            const onMove = (e) => {
-                if (!isDragging) return;
-                moved = true;
-                const touch = e.touches ? e.touches[0] : e;
-                posX = touch.clientX - startX;
-                posY = touch.clientY - startY;
-                applyTransform();
-            };
-            const onEnd = () => isDragging = false;
-
-            viewport.addEventListener('mousedown', onStart);
-            window.addEventListener('mousemove', onMove);
-            window.addEventListener('mouseup', onEnd);
-            viewport.addEventListener('touchstart', onStart);
-            viewport.addEventListener('touchmove', onMove);
-            viewport.addEventListener('touchend', onEnd);
-
-            // 2. 휠 감도 대폭 하향 (0.01 단위로 정밀 조절)
             viewport.addEventListener('wheel', (e) => {
                 e.preventDefault();
-                const zoomSpeed = 0.001; // 숫자가 작을수록 부드러움
-                scale -= e.deltaY * zoomSpeed;
+                scale -= e.deltaY * 0.0005; // 휠 감도 아주 부드럽게 고정
                 scale = Math.min(Math.max(0.2, scale), 3);
-                applyTransform();
-            }, {passive: false});
+                apply();
+            }, {passive:false});
 
-            window.manualZoom = (amt) => { scale *= amt; scale = Math.min(Math.max(0.2, scale), 3); applyTransform(); };
-            window.resetView = () => { scale = 0.7; posX = 10; posY = 10; applyTransform(); };
-            applyTransform();
-        }
-
-        function updateInfoPanel(p) {
-            document.getElementById('panel-content').innerHTML = `
-                <h4 style="margin:0; color:var(--accent);">${p.id}</h4>
-                <p>인구: ${(p.population || 50000).toLocaleString()}</p>
-                <p>소유: ${p.owner || '중립'}</p>
-                <button class="cmd-btn" style="background:var(--mingyu)" onclick="alert('모집 준비')">군사 모집</button>
-                <button class="cmd-btn" style="background:#8b5cf6" onclick="alert('건설 준비')">시설 건설</button>
-            `;
+            window.manualZoom = (a) => { scale *= a; apply(); };
+            window.resetView = () => { scale=0.7; posX=20; posY=20; apply(); };
+            apply();
         }
     </script>
 </body>
