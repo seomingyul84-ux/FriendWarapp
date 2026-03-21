@@ -3,208 +3,197 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FriendWarapp - Command Center</title>
+    <title>FriendWarapp - FINAL ENGINE</title>
     <style>
         :root { --accent: #38bdf8; --mingyu: #22c55e; --sechan: #3b82f6; --manjung: #ef4444; }
-        body { margin: 0; background: #020617; color: #f8fafc; font-family: 'Segoe UI', sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
+        body { margin: 0; background: #020617; color: #f8fafc; font-family: sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
 
-        /* 1. 로그인 게이트 */
+        /* 로그인 레이어 */
         #login-gate { position: fixed; inset: 0; background: #020617; display: flex; align-items: center; justify-content: center; z-index: 9999; }
-        .login-card { background: #0f172a; padding: 40px; border: 2px solid var(--accent); border-radius: 12px; text-align: center; width: 300px; }
-        .login-input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #334155; background: #020617; color: white; box-sizing: border-box; }
-        .login-btn { width: 100%; padding: 12px; background: var(--accent); color: #020617; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; }
+        .login-box { background: #0f172a; padding: 40px; border: 2px solid var(--accent); border-radius: 12px; text-align: center; width: 280px; }
+        .login-box input { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #334155; background: #020617; color: white; box-sizing: border-box; }
+        #login-btn { width: 100%; padding: 12px; background: var(--accent); color: #020617; border: none; font-weight: bold; cursor: pointer; }
 
-        /* 2. 메인 레이아웃 */
-        .header { height: 50px; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; align-items: center; padding: 0 20px; background: #020617; font-weight: bold; }
-        .main-container { display: flex; flex: 1; overflow: hidden; position: relative; }
+        /* 메인 UI */
+        .header { height: 50px; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; align-items: center; padding: 0 20px; background: #020617; }
+        .main-container { display: flex; flex: 1; overflow: hidden; }
         
-        /* 3. 지도 뷰포트 (드래그/줌 전용) */
+        /* 지도 영역 */
         #viewport { flex: 1; position: relative; overflow: hidden; background: #000; cursor: grab; }
-        #map-layer { position: absolute; transform-origin: 0 0; width: 1024px; height: 768px; }
-        #map-img { position: absolute; inset: 0; background: url('map.png') no-repeat; background-size: 100% 100%; z-index: 1; }
+        #map-layer { position: absolute; transform-origin: 0 0; width: 1024px; height: 768px; pointer-events: none; }
+        #map-img { position: absolute; inset: 0; background: url('map.png') no-repeat; background-size: 100% 100%; }
         
-        /* 4. 클릭용 격자 (최상단) */
-        #grid { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(16, 1fr); grid-template-rows: repeat(16, 1fr); z-index: 10; }
-        .tile { border: 0.1px solid rgba(255,255,255,0.05); box-sizing: border-box; cursor: pointer; transition: 0.1s; }
-        .tile:hover { background: rgba(255,255,255,0.1); }
-        .tile.selected { border: 3px solid #fff !important; box-shadow: inset 0 0 15px #fff; z-index: 20; background: rgba(255,255,255,0.2) !important; }
-        
+        /* 🚨 격자 레이어 (중요: 여기서 모든 클릭을 받음) */
+        #grid-overlay { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(16, 1fr); grid-template-rows: repeat(16, 1fr); z-index: 100; pointer-events: auto; }
+        .tile { border: 0.5px solid rgba(255,255,255,0.05); box-sizing: border-box; cursor: pointer; }
+        .tile:hover { background: rgba(56, 189, 248, 0.2); }
+        .tile.active { border: 3px solid #fff !important; box-shadow: inset 0 0 15px #fff; background: rgba(255,255,255,0.2) !important; }
+
         /* 세력 색상 */
         .tile.m { background: rgba(34, 197, 94, 0.4); }
         .tile.s { background: rgba(59, 130, 246, 0.4); }
         .tile.mj { background: rgba(239, 68, 68, 0.4); }
 
-        /* 5. 우측 정보 패널 */
-        #side-panel { width: 320px; background: #0f172a; border-left: 2px solid var(--accent); padding: 25px; box-sizing: border-box; z-index: 100; overflow-y: auto; }
-        .panel-header { font-size: 22px; color: var(--accent); font-weight: bold; margin-bottom: 20px; border-bottom: 2px solid #334155; padding-bottom: 10px; }
-        .info-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; }
-        .action-group { margin-top: 30px; }
-        .action-btn { width: 100%; padding: 14px; margin-bottom: 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; color: #fff; background: #1e293b; border: 1px solid #334155; }
-        .action-btn:hover { background: #334155; }
-        .btn-primary { background: var(--accent); color: #000; border: none; }
+        /* 우측 패널 */
+        #side-panel { width: 300px; background: #0f172a; border-left: 2px solid var(--accent); padding: 20px; box-sizing: border-box; z-index: 1000; }
+        #side-content { height: 100%; }
+        .panel-title { font-size: 20px; color: var(--accent); font-weight: bold; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #334155; }
+        .action-btn { width: 100%; padding: 12px; margin-top: 10px; background: #1e293b; color: #fff; border: 1px solid var(--accent); cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div id="login-gate">
-        <div class="login-card">
-            <h2 style="color:var(--accent); margin-bottom:30px;">FRIEND WAR</h2>
-            <input type="text" id="id-input" class="login-input" placeholder="사령관 이름">
-            <input type="password" id="pw-input" class="login-input" placeholder="보안 코드">
-            <button class="login-btn" onclick="authorize()">SYSTEM CONNECT</button>
+        <div class="login-box">
+            <h2 style="color:var(--accent)">FRIEND WAR</h2>
+            <input type="text" id="user-id" placeholder="사령관명">
+            <input type="password" id="user-pw" placeholder="보안코드">
+            <button id="login-btn">ACCESS</button>
         </div>
     </div>
 
     <div class="header">
-        <div>USER: <span id="u-name" style="color:var(--accent)">---</span></div>
-        <div>CREDIT: <span id="u-money" style="color:var(--mingyu)">0</span> G</div>
+        <div>ID: <b id="display-name">---</b></div>
+        <div>MONEY: <b id="display-money" style="color:var(--mingyu)">0</b> G</div>
     </div>
 
     <div class="main-container">
         <div id="viewport">
             <div id="map-layer">
                 <div id="map-img"></div>
-                <div id="grid"></div>
+                <div id="grid-overlay"></div>
             </div>
         </div>
-        
         <div id="side-panel">
             <div id="side-content">
-                <p style="text-align:center; opacity:0.4; margin-top:100px;">작전 지역을 선택하십시오.</p>
+                <p style="text-align:center; opacity:0.3; margin-top:100px;">섹터를 대기 중...</p>
             </div>
         </div>
     </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase, ref, onValue, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
     const firebaseConfig = { databaseURL: "https://friendwargme-default-rtdb.firebaseio.com/" };
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    let myName = "", selId = null, scale = 1.0, px = 0, py = 0;
-    let isMoving = false;
+    let myName = "", selId = null, scale = 1.0, px = 0, py = 0, isMoving = false;
 
-    // 전역 함수 등록
-    window.authorize = () => {
-        const id = document.getElementById('id-input').value.trim();
-        const pw = document.getElementById('pw-input').value.trim();
-        const authData = { "서민규": "140625", "박세찬": "1234**", "김만중": "98765" };
-        
-        if (authData[id] === pw) {
+    // 1. 로그인 처리 (이벤트 리스너 직접 바인딩)
+    document.getElementById('login-btn').addEventListener('click', () => {
+        const id = document.getElementById('user-id').value.trim();
+        const pw = document.getElementById('user-pw').value.trim();
+        const auth = { "서민규": "140625", "박세찬": "1234**", "김만중": "98765" };
+
+        if (auth[id] === pw) {
             myName = id;
-            document.getElementById('u-name').innerText = id;
+            document.getElementById('display-name').innerText = id;
             document.getElementById('login-gate').style.display = "none";
-            initSystem();
-        } else { alert("신원 확인 실패."); }
-    };
+            bootSystem();
+        } else { alert("인증 실패"); }
+    });
 
-    function initSystem() {
-        renderGrid();
-        syncGlobal();
-        initMapControls();
+    function bootSystem() {
+        createGrid();
+        syncData();
+        setupMap();
     }
 
-    // 🚨 섹터 클릭 로직 (핵심)
-    window.selectSector = async (id) => {
-        selId = id;
-        console.log("Sector Selected:", id);
-        
-        // 시각적 업데이트
-        document.querySelectorAll('.tile').forEach(t => t.classList.remove('selected'));
-        const target = document.getElementById(`tile-${id}`);
-        if(target) target.classList.add('selected');
-
-        // 데이터 페칭 및 UI 렌더링
-        const side = document.getElementById('side-content');
-        side.innerHTML = `<p style="text-align:center;">분석 중...</p>`;
-
-        try {
-            const snap = await get(ref(db, `provinces/${id}`));
-            const data = snap.val() || { owner: "중립", population: 50000 };
-            
-            renderPanel(data, id);
-        } catch(e) { side.innerHTML = "통신 오류"; }
-    };
-
-    function renderPanel(data, id) {
-        const side = document.getElementById('side-content');
-        const isMine = (data.owner === myName);
-        
-        side.innerHTML = `
-            <div class="panel-header">SECTION ${id}</div>
-            <div class="info-row"><span>지배 세력</span><b style="color:var(--accent)">${data.owner}</b></div>
-            <div class="info-row"><span>거주 인구</span><b>${(data.population||50000).toLocaleString()}명</b></div>
-            
-            <div class="action-group">
-                <div style="font-size:12px; color:var(--accent); margin-bottom:10px;">[ MILITARY ]</div>
-                <button class="action-btn" onclick="window.orderAction('${id}', 'recruit')">💂 병력 모집 (100G)</button>
-                
-                <div style="font-size:12px; color:var(--accent); margin-bottom:10px; margin-top:20px;">[ CONSTRUCTION ]</div>
-                <button class="action-btn" onclick="window.orderAction('${id}', 'build')">🏢 방어 시설 건설 (500G)</button>
-                
-                ${!isMine ? `<button class="action-btn btn-primary" style="margin-top:20px;" onclick="window.orderAction('${id}', 'attack')">🚀 공격 작전 개시</button>` : ''}
-            </div>
-        `;
-    }
-
-    window.orderAction = (id, type) => {
-        alert(`${id} 섹터 - ${type} 명령이 접수되었습니다.`);
-    };
-
-    function renderGrid() {
-        const grid = document.getElementById('grid');
+    // 2. 격자 생성 및 클릭 이벤트 (JS 엔진 강제 가동)
+    function createGrid() {
+        const grid = document.getElementById('grid-overlay');
         grid.innerHTML = "";
-        for(let i=1; i<=256; i++) {
+        for (let i = 1; i <= 256; i++) {
             const id = `P${i}`;
-            const div = document.createElement('div');
-            div.id = `tile-${id}`;
-            div.className = 'tile';
-            div.onclick = () => { if(!isMoving) window.selectSector(id); };
-            grid.appendChild(div);
+            const tile = document.createElement('div');
+            tile.className = 'tile';
+            tile.dataset.id = id;
+            
+            tile.addEventListener('click', () => {
+                if (isMoving) return;
+                console.log("엔진 신호 감지: ", id);
+                handleSectorClick(id);
+            });
+            grid.appendChild(tile);
         }
     }
 
-    function syncGlobal() {
+    // 3. 섹터 클릭 처리 (우측 패널 강제 업데이트)
+    async function handleSectorClick(id) {
+        selId = id;
+        
+        // 타일 하이라이트
+        document.querySelectorAll('.tile').forEach(t => t.classList.remove('active'));
+        const activeTile = document.querySelector(`[data-id="${id}"]`);
+        if (activeTile) activeTile.classList.add('active');
+
+        // 패널 갱신
+        const side = document.getElementById('side-content');
+        side.innerHTML = `<h3 style="color:var(--accent)">분석 중...</h3>`;
+
+        try {
+            const snapshot = await get(ref(db, `provinces/${id}`));
+            const data = snapshot.val() || { owner: "중립", population: 50000 };
+            
+            side.innerHTML = `
+                <div class="panel-title">SECTION ${id}</div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                    <span>점유자</span><b style="color:var(--accent)">${data.owner}</b>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+                    <span>인구</span><b>${(data.population || 50000).toLocaleString()}명</b>
+                </div>
+                <hr style="border:0; border-top:1px solid #334155; margin:20px 0;">
+                <button class="action-btn" id="btn-recruit">💂 병력 모집 (100G)</button>
+                <button class="action-btn" id="btn-build">🏢 시설 건설 (500G)</button>
+            `;
+
+            // 버튼 이벤트 별도 바인딩
+            document.getElementById('btn-recruit').onclick = () => alert(`${id} 병력 모집 명령!`);
+            document.getElementById('btn-build').onclick = () => alert(`${id} 시설 건설 명령!`);
+
+        } catch (e) {
+            side.innerHTML = `<p style="color:red">데이터 연동 실패</p>`;
+        }
+    }
+
+    function syncData() {
         onValue(ref(db, `players/${myName}/resources/money`), s => {
-            document.getElementById('u-money').innerText = Math.floor(s.val()||0).toLocaleString();
+            document.getElementById('display-money').innerText = Math.floor(s.val()||0).toLocaleString();
         });
 
         onValue(ref(db, 'provinces'), snap => {
             const data = snap.val() || {};
-            for(let i=1; i<=256; i++){
-                const id = `P${i}`;
-                const tile = document.getElementById(`tile-${id}`);
-                if(!tile) continue;
+            document.querySelectorAll('.tile').forEach(tile => {
+                const id = tile.dataset.id;
                 const owner = data[id]?.owner || "";
                 tile.classList.remove('m', 's', 'mj');
-                if(owner === "서민규") tile.classList.add('m');
-                else if(owner === "박세찬") tile.classList.add('s');
-                else if(owner === "김만중") tile.classList.add('mj');
-            }
+                if (owner === "서민규") tile.classList.add('m');
+                else if (owner === "박세찬") tile.classList.add('s');
+                else if (owner === "김만중") tile.classList.add('mj');
+            });
         });
     }
 
-    function initMapControls() {
+    function setupMap() {
         const view = document.getElementById('viewport'), layer = document.getElementById('map-layer');
-        const draw = () => layer.style.transform = `translate(${px}px, ${py}px) scale(${scale})`;
+        const update = () => layer.style.transform = `translate(${px}px, ${py}px) scale(${scale})`;
         let active = false, lx, ly;
 
         view.onpointerdown = (e) => { active = true; isMoving = false; lx = e.clientX; ly = e.clientY; view.setPointerCapture(e.pointerId); };
         window.onpointermove = (e) => {
-            if(!active) return;
+            if (!active) return;
             let dx = e.clientX - lx, dy = e.clientY - ly;
-            if(Math.abs(dx) > 3 || Math.abs(dy) > 3) isMoving = true;
-            px += dx; py += dy; lx = e.clientX; ly = e.clientY; draw();
+            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) isMoving = true;
+            px += dx; py += dy; lx = e.clientX; ly = e.clientY; update();
         };
         window.onpointerup = () => active = false;
-        view.onwheel = (e) => { scale -= e.deltaY * 0.001; scale = Math.min(Math.max(0.3, scale), 3); draw(); };
+        view.onwheel = (e) => { scale -= e.deltaY * 0.001; scale = Math.min(Math.max(0.3, scale), 3); update(); };
         
-        // 초기 배치
-        px = (view.clientWidth - 1024) / 2;
-        py = (view.clientHeight - 768) / 2;
-        draw();
+        px = (view.clientWidth - 1024) / 2; py = (view.clientHeight - 768) / 2;
+        update();
     }
 </script>
 </body>
