@@ -2,204 +2,181 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>FriendWarapp - FINAL RADIUS</title>
+    <title>FriendWarapp - FINAL CALIBRATION</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        :root { --accent: #38bdf8; --mingyu: #22c55e; --sechan: #3b82f6; --manjung: #ef4444; }
-        body { margin: 0; background: #020617; color: #f8fafc; font-family: sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
+        :root { --accent: #38bdf8; --mingyu: #22c55e; }
+        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
         
-        /* 로그인 */
         #login-gate { position: fixed; inset: 0; background: #020617; display: flex; align-items: center; justify-content: center; z-index: 9999; }
-        .login-box { background: #0f172a; padding: 40px; border: 2px solid var(--accent); border-radius: 12px; text-align: center; width: 280px; }
-        .login-box input { width: 100%; padding: 12px; margin-bottom: 10px; background: #020617; color: white; border: 1px solid #334155; }
-        #login-btn { width: 100%; padding: 12px; background: var(--accent); color: #020617; border: none; font-weight: bold; cursor: pointer; }
+        .login-box { background: #0f172a; padding: 30px; border: 2px solid var(--accent); border-radius: 12px; text-align: center; }
+        
+        .header { height: 50px; border-bottom: 1px solid var(--accent); display: flex; justify-content: space-between; align-items: center; padding: 0 20px; background: #020617; }
+        .container { display: flex; flex: 1; overflow: hidden; }
+        
+        /* 맵 컨테이너 */
+        #viewport { flex: 1; position: relative; overflow: hidden; background: #000; cursor: crosshair; }
+        #map-wrapper { position: absolute; transform-origin: 0 0; width: 1024px; height: 768px; }
+        #map-img { position: absolute; inset: 0; background: url('map.png') no-repeat; background-size: 100% 100%; pointer-events: none; }
+        
+        /* 🚨 실질적인 클릭을 받는 투명 레이어 (최상단) */
+        #click-surface { position: absolute; inset: 0; z-index: 500; pointer-events: auto; }
+        
+        /* 섹터 강조용 캔버스 (선택된 칸 표시) */
+        #highlight-layer { position: absolute; inset: 0; z-index: 400; pointer-events: none; display: grid; grid-template-columns: repeat(16, 1fr); grid-template-rows: repeat(16, 1fr); }
+        .tile-unit { border: 0.1px solid rgba(255,255,255,0.05); box-sizing: border-box; }
+        .tile-unit.selected { border: 3px solid #fff; background: rgba(255,255,255,0.2); box-shadow: inset 0 0 10px #fff; }
 
-        /* 메인 UI */
-        .header { height: 50px; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; align-items: center; padding: 0 20px; }
-        .main-container { display: flex; flex: 1; overflow: hidden; }
-        
-        /* 맵 컨트롤 영역 */
-        #viewport { flex: 1; position: relative; overflow: hidden; background: #000; cursor: grab; }
-        #map-layer { position: absolute; transform-origin: 0 0; width: 1024px; height: 768px; }
-        #map-img { position: absolute; inset: 0; background: url('map.png') no-repeat; background-size: 100% 100%; z-index: 1; }
-        
-        /* 🚨 클릭용 격자 (타일 클릭 유실 방지를 위해 포인터 이벤트 강화) */
-        #grid-overlay { 
-            position: absolute; inset: 0; 
-            display: grid; grid-template-columns: repeat(16, 1fr); grid-template-rows: repeat(16, 1fr); 
-            z-index: 100; pointer-events: auto !important;
-        }
-        .tile { border: 0.1px solid rgba(255,255,255,0.05); box-sizing: border-box; }
-        .tile.active { border: 3px solid #fff !important; background: rgba(255,255,255,0.2) !important; z-index: 101; }
-        
-        /* 세력 색상 */
-        .tile.m { background: rgba(34, 197, 94, 0.4); }
-        .tile.s { background: rgba(59, 130, 246, 0.4); }
-        .tile.mj { background: rgba(239, 68, 68, 0.4); }
-
-        /* 우측 패널 */
-        #side-panel { width: 300px; background: #0f172a; border-left: 2px solid var(--accent); padding: 20px; box-sizing: border-box; z-index: 1000; }
+        /* 패널 */
+        #side-panel { width: 320px; background: #0f172a; border-left: 1px solid var(--accent); padding: 20px; box-sizing: border-box; overflow-y: auto; }
         .action-btn { width: 100%; padding: 12px; margin-top: 10px; background: #1e293b; color: #fff; border: 1px solid var(--accent); cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div id="login-gate">
-        <div class="login-box">
-            <h2 style="color:var(--accent)">COMMANDER FORCE</h2>
-            <input type="text" id="user-id" placeholder="사령관명" value="서민규">
-            <input type="password" id="user-pw" placeholder="보안코드" value="140625">
-            <button id="login-btn">CONNECT SYSTEM</button>
-        </div>
+<div id="login-gate">
+    <div class="login-box">
+        <h2 style="color:var(--accent)">COMMANDER AUTH</h2>
+        <input type="text" id="u-id" placeholder="사령관명" value="서민규" style="display:block; width:200px; margin-bottom:10px; padding:10px;">
+        <input type="password" id="u-pw" placeholder="보안코드" value="140625" style="display:block; width:200px; margin-bottom:10px; padding:10px;">
+        <button onclick="login()" style="width:224px; padding:10px; background:var(--accent); border:none; font-weight:bold; cursor:pointer;">CONNECT</button>
     </div>
+</div>
 
-    <div class="header">
-        <div>ID: <b id="display-name">---</b></div>
-        <div>MONEY: <b id="display-money" style="color:var(--mingyu)">0</b> G</div>
-    </div>
+<div class="header">
+    <div>COMMANDER: <b id="disp-name">---</b></div>
+    <div>CREDIT: <b id="disp-money" style="color:var(--mingyu)">0</b> G</div>
+</div>
 
-    <div class="main-container">
-        <div id="viewport">
-            <div id="map-layer">
-                <div id="map-img"></div>
-                <div id="grid-overlay"></div>
-            </div>
-        </div>
-        <div id="side-panel">
-            <div id="side-content">
-                <p style="text-align:center; opacity:0.3; margin-top:100px;">섹터를 터치하십시오.</p>
-            </div>
+<div class="container">
+    <div id="viewport">
+        <div id="map-wrapper">
+            <div id="map-img"></div>
+            <div id="highlight-layer"></div>
+            <div id="click-surface"></div>
         </div>
     </div>
+    <div id="side-panel">
+        <div id="side-content">
+            <p style="text-align:center; opacity:0.5; margin-top:100px;">섹터를 터치하여 작전을 수립하십시오.</p>
+        </div>
+    </div>
+</div>
 
 <script>
-    console.log("ENGINE STATUS: INITIALIZING...");
-
     const firebaseConfig = { databaseURL: "https://friendwargme-default-rtdb.firebaseio.com/" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
     let myName = "", selId = null, scale = 1.0, px = 0, py = 0, isMoving = false;
 
-    // 로그인 핸들러
-    document.getElementById('login-btn').onclick = function() {
-        const id = document.getElementById('user-id').value.trim();
-        const pw = document.getElementById('user-pw').value.trim();
-        const auth = { "서민규": "140625", "박세찬": "1234**", "김만중": "98765" };
-
-        if (auth[id] === pw) {
-            console.log("인증 성공: " + id);
+    function login() {
+        const id = document.getElementById('u-id').value;
+        const pw = document.getElementById('u-pw').value;
+        if(id === "서민규" && pw === "140625") {
             myName = id;
-            document.getElementById('display-name').innerText = id;
+            document.getElementById('disp-name').innerText = id;
             document.getElementById('login-gate').style.display = "none";
-            bootSystem();
-        } else { alert("ACCESS DENIED"); }
-    };
+            startEngine();
+        } else { alert("신원 확인 불가"); }
+    }
 
-    function bootSystem() {
-        console.log("BOOTING SYSTEM...");
-        const grid = document.getElementById('grid-overlay');
-        grid.innerHTML = "";
+    function startEngine() {
+        console.log("ENGINE START: ANALYZING COORDINATES...");
         
-        // 1. 타일 생성
-        for (let i = 1; i <= 256; i++) {
-            const id = "P" + i;
-            const tile = document.createElement('div');
-            tile.className = 'tile';
-            tile.id = "tile-" + id;
-            grid.appendChild(tile);
+        // 하이라이트 레이어 초기화 (256칸)
+        const hl = document.getElementById('highlight-layer');
+        hl.innerHTML = "";
+        for(let i=1; i<=256; i++) {
+            const d = document.createElement('div');
+            d.className = 'tile-unit';
+            d.id = 'hl-P' + i;
+            hl.appendChild(d);
         }
 
-        // 2. 🚨 클릭 이벤트 강제 바인딩 (이벤트 위임 방식)
-        grid.onclick = function(e) {
+        // 🚨 좌표 기반 클릭 엔진
+        const surface = document.getElementById('click-surface');
+        surface.onmousedown = function(e) { isMoving = false; };
+        
+        surface.onclick = function(e) {
             if (isMoving) return;
             
-            // 클릭된 좌표로 타일 인덱스 역추적 (가장 확실함)
-            const rect = grid.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            const rect = surface.getBoundingClientRect();
+            // 현재 화면상의 클릭 좌표를 격자판의 실제 크기로 변환
+            const x = (e.clientX - rect.left) / scale;
+            const y = (e.clientY - rect.top) / scale;
             
-            const col = Math.floor((x / rect.width) * 16);
-            const row = Math.floor((y / rect.height) * 16);
-            const index = row * 16 + col + 1;
+            const col = Math.floor((x / 1024) * 16);
+            const row = Math.floor((y / 768) * 16);
             
-            if (index >= 1 && index <= 256) {
+            if (col >= 0 && col < 16 && row >= 0 && row < 16) {
+                const index = row * 16 + col + 1;
                 const targetId = "P" + index;
-                console.log("클릭 감지 -> 섹터 ID: " + targetId);
-                handleSectorClick(targetId);
+                console.log("🎯 좌표 타격 성공: " + targetId + " (X:" + Math.round(x) + ", Y:" + Math.round(y) + ")");
+                processSector(targetId);
             }
         };
 
-        // 실시간 세력 업데이트
-        db.ref('provinces').on('value', function(snap) {
-            const data = snap.val() || {};
-            for(let i=1; i<=256; i++) {
-                const id = "P" + i;
-                const t = document.getElementById("tile-" + id);
-                if(!t) continue;
-                const owner = data[id] ? data[id].owner : "";
-                t.classList.remove('m', 's', 'mj');
-                if (owner === "서민규") t.classList.add('m');
-                else if (owner === "박세찬") t.classList.add('s');
-                else if (owner === "김만중") t.classList.add('mj');
-            }
+        // 실시간 돈 동기화
+        db.ref('players/' + myName + '/resources/money').on('value', s => {
+            document.getElementById('disp-money').innerText = Math.floor(s.val() || 0).toLocaleString();
         });
 
-        // 돈 업데이트
-        db.ref('players/' + myName + '/resources/money').on('value', function(s) {
-            document.getElementById('display-money').innerText = Math.floor(s.val() || 0).toLocaleString();
-        });
-
-        setupMap();
+        initMapMovement();
     }
 
-    async function handleSectorClick(id) {
+    function processSector(id) {
         selId = id;
-        // 하이라이트
-        const all = document.getElementsByClassName('tile');
-        for (let a of all) a.classList.remove('active');
-        document.getElementById("tile-" + id).classList.add('active');
+        // 시각적 강조
+        const units = document.getElementsByClassName('tile-unit');
+        for(let u of units) u.classList.remove('selected');
+        document.getElementById('hl-' + id).classList.add('selected');
 
+        // 패널 업데이트
         const side = document.getElementById('side-content');
-        side.innerHTML = "<h4>데이터 수신 중...</h4>";
+        side.innerHTML = "<h4>데이터 통신 중...</h4>";
 
-        // Firebase 데이터 단발성 조회
-        db.ref('provinces/' + id).once('value').then(function(snap) {
+        db.ref('provinces/' + id).once('value').then(snap => {
             const data = snap.val() || { owner: "중립", population: 50000 };
-            console.log("데이터 수신 완료: ", data);
-            
-            side.innerHTML = 
-                '<h2 style="color:var(--accent); margin-top:0;">SECTION ' + id + '</h2>' +
-                '<p style="margin:5px 0;">지배 세력: <b style="color:var(--accent)">' + data.owner + '</b></p>' +
-                '<p style="margin:5px 0;">거주 인구: <b>' + (data.population || 50000).toLocaleString() + '명</b></p>' +
-                '<hr style="border:0; border-top:1px solid #334155; margin:15px 0;">' +
-                '<button class="action-btn" onclick="alert(\'병력 소집 명령\')">💂 병력 모집 (100G)</button>' +
-                '<button class="action-btn" onclick="alert(\'방어 시설 건설\')">🏢 시설 건설 (500G)</button>';
+            side.innerHTML = `
+                <h2 style="color:var(--accent)">SECTION ${id}</h2>
+                <div style="margin:15px 0; border:1px solid #334155; padding:15px; border-radius:8px; background:#1e293b;">
+                    <p style="margin:5px 0;">점유: <b>${data.owner}</b></p>
+                    <p style="margin:5px 0;">인구: <b>${(data.population||50000).toLocaleString()}명</b></p>
+                </div>
+                <div style="margin-top:30px;">
+                    <p style="font-size:12px; color:var(--accent);">[ 지상군 통제 ]</p>
+                    <button class="action-btn" onclick="alert('병력 모집 중...')">💂 병력 모집 (100G)</button>
+                    <p style="font-size:12px; color:var(--accent); margin-top:20px;">[ 인프라 건설 ]</p>
+                    <button class="action-btn" onclick="alert('시설 건설 중...')">🏢 시설 건설 (500G)</button>
+                </div>
+            `;
         });
     }
 
-    function setupMap() {
-        const view = document.getElementById('viewport'), layer = document.getElementById('map-layer');
-        const update = function() { layer.style.transform = 'translate(' + px + 'px, ' + py + 'px) scale(' + scale + ')'; };
+    function initMapMovement() {
+        const view = document.getElementById('viewport'), wrapper = document.getElementById('map-wrapper');
+        const draw = () => wrapper.style.transform = `translate(${px}px, ${py}px) scale(${scale})`;
         let active = false, lx, ly;
 
-        view.onpointerdown = function(e) { 
-            active = true; isMoving = false; lx = e.clientX; ly = e.clientY; 
-            view.setPointerCapture(e.pointerId); 
-        };
-        window.onpointermove = function(e) {
+        view.onpointerdown = e => { active = true; lx = e.clientX; ly = e.clientY; view.setPointerCapture(e.pointerId); };
+        window.onpointermove = e => {
             if (!active) return;
             let dx = e.clientX - lx, dy = e.clientY - ly;
             if (Math.abs(dx) > 5 || Math.abs(dy) > 5) isMoving = true;
-            px += dx; py += dy; lx = e.clientX; ly = e.clientY; update();
+            px += dx; py += dy; lx = e.clientX; ly = e.clientY; draw();
         };
-        window.onpointerup = function() { active = false; };
-        view.onwheel = function(e) { scale -= e.deltaY * 0.001; scale = Math.min(Math.max(0.3, scale), 3); update(); };
+        window.onpointerup = () => active = false;
+        view.onwheel = e => { 
+            const speed = 0.001;
+            scale -= e.deltaY * speed; 
+            scale = Math.min(Math.max(0.3, scale), 3); 
+            draw(); 
+        };
         
-        // 초기 중앙 정렬
         px = (view.clientWidth - 1024) / 2; py = (view.clientHeight - 768) / 2;
-        update();
+        draw();
     }
 </script>
 </body>
