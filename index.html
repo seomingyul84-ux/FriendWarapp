@@ -14,7 +14,7 @@
             -webkit-user-select: none; user-select: none;
         }
 
-        /* 🚨 무단 침입 차단 레이어 */
+        /* 🚨 로그인 게이트 */
         #login-gate {
             position: fixed; inset: 0; background: #020617; 
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -37,19 +37,31 @@
         }
 
         /* 메인 UI */
-        .header { height: 45px; padding: 0 1rem; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; align-items: center; background: #020617; }
+        .header { height: 45px; padding: 0 1rem; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; align-items: center; background: #020617; z-index: 2000; }
         .header b { font-family: 'Orbitron'; color: var(--accent); font-size: 16px; }
         .container { display: flex; flex: 1; overflow: hidden; position: relative; }
-        #viewport { flex: 1; position: relative; overflow: hidden; background: radial-gradient(#1e293b 1px, transparent 1px); background-size: 30px 30px; cursor: grab; }
+        
+        #viewport { flex: 1; position: relative; overflow: hidden; background: radial-gradient(#1e293b 1px, transparent 1px); background-size: 30px 30px; cursor: grab; touch-action: none; }
         #map-layer { position: absolute; transform-origin: 0 0; width: 1024px; height: 768px; pointer-events: none; }
         #map-img { width: 100%; height: 100%; background: url('./map.png') no-repeat; background-size: 100% 100%; position: relative; }
         #grid { display: grid; grid-template-columns: repeat(16, 1fr); grid-template-rows: repeat(16, 1fr); width: 100%; height: 100%; pointer-events: auto; }
+        
         .tile { border: 0.1px solid rgba(255,255,255,0.05); box-sizing: border-box; }
-        .tile.m { background: rgba(34, 197, 94, 0.15); border: 1px solid var(--mingyu); }
-        .tile.s { background: rgba(59, 130, 246, 0.15); border: 1px solid var(--sechan); }
-        .tile.mj { background: rgba(239, 68, 68, 0.15); border: 1px solid var(--manjung); }
-        #side-panel { width: 300px; background: #0f172a; border-left: 1px solid #334155; padding: 20px; z-index: 1000; }
-        .panel-title { font-family: 'Orbitron'; color: var(--accent); border-bottom: 1px solid #334155; padding-bottom: 10px; margin-bottom: 15px; font-size: 14px; }
+        .tile.m { background: rgba(34, 197, 94, 0.2); border: 1px solid var(--mingyu); }
+        .tile.s { background: rgba(59, 130, 246, 0.2); border: 1px solid var(--sechan); }
+        .tile.mj { background: rgba(239, 68, 68, 0.2); border: 1px solid var(--manjung); }
+        .tile:active { background: rgba(255,255,255,0.1); }
+
+        #side-panel { width: 300px; background: rgba(15, 23, 42, 0.98); border-left: 1px solid #334155; padding: 20px; backdrop-filter: blur(10px); z-index: 1000; }
+        .panel-title { font-family: 'Orbitron'; color: var(--accent); border-bottom: 1px solid #475569; padding-bottom: 10px; margin-bottom: 15px; font-size: 14px; }
+        .row { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 0.5px solid #1e293b; padding-bottom: 5px; }
+        
+        .btn { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 4px; font-weight: bold; color: white; cursor: pointer; text-transform: uppercase; font-size: 10px; }
+        .btn-green { background: var(--mingyu); }
+        .btn-red { background: var(--manjung); }
+        
+        #sub-list { margin-top: 15px; padding: 10px; background: #0f172a; border-radius: 5px; border: 1px solid var(--accent); display: none; }
+        .unit-opt { padding: 8px; margin-bottom: 5px; background: #1e293b; display: flex; justify-content: space-between; cursor: pointer; border-radius: 3px; }
     </style>
 </head>
 <body>
@@ -74,7 +86,11 @@
                 <div id="map-img"><div id="grid"></div></div>
             </div>
         </div>
-        <div id="side-panel"><div id="side-content"><p style="text-align:center; margin-top:100px; opacity:0.2;">승인 대기 중...</p></div></div>
+        <div id="side-panel">
+            <div id="side-content">
+                <p style="text-align:center; margin-top:100px; opacity:0.2;">승인 대기 중...</p>
+            </div>
+        </div>
     </div>
 
 <script type="module">
@@ -89,7 +105,6 @@
     let px = (window.innerWidth - 300)/2 - (512 * scale), py = window.innerHeight/2 - (384 * scale);
     let isMoving = false;
 
-    // 🚨 승인된 사령관 전용 명부
     const commanderDB = {
         "서민규": "140625",
         "박세찬": "1234**",
@@ -101,45 +116,55 @@
         const pw = document.getElementById('pw-input').value.trim();
 
         if (commanderDB[id] && commanderDB[id] === pw) {
-            // 1. 신원 확정
             myName = id;
             document.getElementById('u-name').innerText = id;
             document.getElementById('side-content').innerHTML = '<p style="text-align:center; margin-top:100px; opacity:0.2;">섹터를 선택하십시오.</p>';
-            
-            // 2. 벙커 개방
             document.getElementById('login-gate').style.display = "none";
             
-            // 3. 비로소 데이터 동기화 및 엔진 가동
-            startEngine();
+            // 🚨 엔진 가동
+            renderBaseGrid(); 
+            sync();
+            init();
         } else {
             alert("⚠️ 접근 거부: 잘못된 신원 정보입니다.");
         }
     };
 
-    function startEngine() {
-        sync();
-        init();
+    function renderBaseGrid() {
+        const grid = document.getElementById('grid');
+        grid.innerHTML = "";
+        for(let i=1; i<=256; i++) {
+            const id = `P${i}`;
+            const div = document.createElement('div');
+            div.id = `tile-${id}`;
+            div.className = 'tile';
+            grid.appendChild(div);
+        }
     }
 
     function sync() {
-        if(!myName) return; // 이름 없으면 데이터 요청 금지
+        if(!myName) return;
 
         onValue(ref(db, `players/${myName}/resources/money`), s => {
             document.getElementById('u-money').innerText = Math.floor(s.val()||0).toLocaleString();
         });
 
         onValue(ref(db, 'provinces'), (snapshot) => {
-            const grid = document.getElementById('grid');
             const data = snapshot.val() || {};
-            grid.innerHTML = "";
             for(let i=1; i<=256; i++) {
                 const id = `P${i}`;
                 const p = data[id] || { id: id, owner: "중립", population: 50000 };
-                const div = document.createElement('div');
+                const div = document.getElementById(`tile-${id}`);
+                if(!div) continue;
+
                 div.className = `tile ${p.owner.includes("서민규")?'m':p.owner.includes("박세찬")?'s':p.owner.includes("김만중")?'mj':''}`;
                 if(id === selId) div.style.boxShadow = "inset 0 0 12px #fff";
-                div.onclick = () => { if(isMoving) return; selId = id; updateUI(p); };
-                grid.appendChild(div);
+
+                div.onclick = () => { 
+                    if(isMoving) return; 
+                    selId = id; 
+                    updateUI(p); 
+                };
             }
         });
     }
@@ -149,11 +174,13 @@
         const isMine = (p.owner === myName);
         side.innerHTML = `
             <div class="panel-title">SECTION ${p.id}</div>
-            <div class="row" style="display:flex; justify-content:space-between; margin-bottom:10px;"><span>소유주</span><span>${p.owner}</span></div>
-            <div class="row" style="display:flex; justify-content:space-between; margin-bottom:10px;"><span>인구</span><span>${(p.population || 50000).toLocaleString()}명</span></div>
-            <button style="width:100%; padding:12px; background:${isMine?'var(--mingyu)':'var(--manjung)'}; color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer;" onclick="toggleList()">명령 하달</button>
-            <div id="sub-list" style="display:none; margin-top:15px; padding:10px; background:#0f172a; border-radius:5px; border:1px solid var(--accent);">
-                <div style="padding:8px; margin-bottom:5px; background:#1e293b; display:flex; justify-content:space-between; cursor:pointer;" onclick="work('보병', 100, 1)"><span>💂 보병</span><span>100G</span></div>
+            <div class="row"><span>소유권</span><span>${p.owner}</span></div>
+            <div class="row"><span>인구</span><span>${(p.population || 50000).toLocaleString()}명</span></div>
+            <button class="btn ${isMine?'btn-green':'btn-red'}" onclick="toggleList()">${isMine?'병력 모집':'공격 개시'}</button>
+            <div id="sub-list">
+                <div class="unit-opt" onclick="work('보병', 100, 1)"><span>💂 보병</span><span>100G</span></div>
+                <div class="unit-opt" onclick="work('전차', 500, 3)"><span>🚜 전차</span><span>500G</span></div>
+                <div class="unit-opt" onclick="work('전투기', 400, 2)"><span>🛩️ 전투기</span><span>400G</span></div>
             </div>
         `;
     }
@@ -167,8 +194,10 @@
         const mSnap = await get(ref(db, `players/${myName}/resources/money`));
         const money = mSnap.val() || 0;
         if(money < c) return alert("예산 부족!");
+        
+        const finish = Date.now() + (t * 3600000);
         const updates = {};
-        updates[`provinces/${selId}/work`] = { name: n, finishAt: Date.now() + (t * 3600000), owner: myName };
+        updates[`provinces/${selId}/work`] = { name: n, finishAt: finish, owner: myName };
         updates[`players/${myName}/resources/money`] = money - c;
         update(ref(db), updates).then(() => alert(`${n} 생산 시작!`));
     };
@@ -177,17 +206,33 @@
         const view = document.getElementById('viewport');
         const layer = document.getElementById('map-layer');
         const draw = () => layer.style.transform = `translate(${px}px, ${py}px) scale(${scale})`;
+        
         let active = false, lx, ly, moveDist = 0;
-        view.onpointerdown = (e) => { active = true; isMoving = false; moveDist = 0; lx = e.clientX; ly = e.clientY; view.setPointerCapture(e.pointerId); };
+
+        view.onpointerdown = (e) => { 
+            active = true; isMoving = false; moveDist = 0;
+            lx = e.clientX; ly = e.clientY; 
+            view.setPointerCapture(e.pointerId);
+        };
+
         window.onpointermove = (e) => {
             if(!active) return;
-            let dx = e.clientX - lx; let dy = e.clientY - ly;
+            let dx = e.clientX - lx;
+            let dy = e.clientY - ly;
             moveDist += Math.abs(dx) + Math.abs(dy);
-            if(moveDist > 5) isMoving = true;
-            px += dx; py += dy; lx = e.clientX; ly = e.clientY; draw();
+            if(moveDist > 5) isMoving = true; 
+            px += dx; py += dy;
+            lx = e.clientX; ly = e.clientY;
+            draw();
         };
+
         window.onpointerup = (e) => { active = false; view.releasePointerCapture(e.pointerId); };
-        view.onwheel = (e) => { e.preventDefault(); scale -= e.deltaY * 0.0005; scale = Math.min(Math.max(0.1, scale), 3); draw(); };
+        view.onwheel = (e) => { 
+            e.preventDefault();
+            scale -= e.deltaY * 0.0005; 
+            scale = Math.min(Math.max(0.1, scale), 3); 
+            draw(); 
+        };
         draw();
     }
 </script>
