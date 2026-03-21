@@ -14,7 +14,7 @@
             -webkit-user-select: none; user-select: none;
         }
 
-        /* 🚨 로그인 게이트 */
+        /* 🔒 로그인 게이트 */
         #login-gate {
             position: fixed; inset: 0; background: #020617; 
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -50,16 +50,13 @@
         .tile.m { background: rgba(34, 197, 94, 0.2); border: 1px solid var(--mingyu); }
         .tile.s { background: rgba(59, 130, 246, 0.2); border: 1px solid var(--sechan); }
         .tile.mj { background: rgba(239, 68, 68, 0.2); border: 1px solid var(--manjung); }
-        .tile:active { background: rgba(255,255,255,0.1); }
 
         #side-panel { width: 300px; background: rgba(15, 23, 42, 0.98); border-left: 1px solid #334155; padding: 20px; backdrop-filter: blur(10px); z-index: 1000; }
         .panel-title { font-family: 'Orbitron'; color: var(--accent); border-bottom: 1px solid #475569; padding-bottom: 10px; margin-bottom: 15px; font-size: 14px; }
         .row { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 0.5px solid #1e293b; padding-bottom: 5px; }
-        
         .btn { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 4px; font-weight: bold; color: white; cursor: pointer; text-transform: uppercase; font-size: 10px; }
         .btn-green { background: var(--mingyu); }
         .btn-red { background: var(--manjung); }
-        
         #sub-list { margin-top: 15px; padding: 10px; background: #0f172a; border-radius: 5px; border: 1px solid var(--accent); display: none; }
         .unit-opt { padding: 8px; margin-bottom: 5px; background: #1e293b; display: flex; justify-content: space-between; cursor: pointer; border-radius: 3px; }
     </style>
@@ -86,11 +83,7 @@
                 <div id="map-img"><div id="grid"></div></div>
             </div>
         </div>
-        <div id="side-panel">
-            <div id="side-content">
-                <p style="text-align:center; margin-top:100px; opacity:0.2;">승인 대기 중...</p>
-            </div>
-        </div>
+        <div id="side-panel"><div id="side-content"></div></div>
     </div>
 
 <script type="module">
@@ -105,33 +98,23 @@
     let px = (window.innerWidth - 300)/2 - (512 * scale), py = window.innerHeight/2 - (384 * scale);
     let isMoving = false;
 
-    const commanderDB = {
-        "서민규": "140625",
-        "박세찬": "1234**",
-        "김man중": "98765" // 김만중 오타 수정(예시)
-    };
+    const commanderDB = { "서민규": "140625", "박세찬": "1234**", "김만중": "98765" };
 
     window.authorize = () => {
         const id = document.getElementById('id-input').value.trim();
         const pw = document.getElementById('pw-input').value.trim();
-
         if (commanderDB[id] && commanderDB[id] === pw) {
             myName = id;
             document.getElementById('u-name').innerText = id;
-            document.getElementById('side-content').innerHTML = '<p style="text-align:center; margin-top:100px; opacity:0.2;">섹터를 선택하십시오.</p>';
             document.getElementById('login-gate').style.display = "none";
-            
             renderBaseGrid(); 
             sync();
             init();
-        } else {
-            alert("⚠️ 접근 거부: 잘못된 신원 정보입니다.");
-        }
+        } else { alert("⚠️ 잘못된 신원 정보입니다."); }
     };
 
     function renderBaseGrid() {
         const grid = document.getElementById('grid');
-        if(!grid) return;
         grid.innerHTML = "";
         for(let i=1; i<=256; i++) {
             const id = `P${i}`;
@@ -144,10 +127,8 @@
 
     function sync() {
         if(!myName) return;
-
         onValue(ref(db, `players/${myName}/resources/money`), s => {
-            const val = s.val();
-            document.getElementById('u-money').innerText = Math.floor(val || 0).toLocaleString();
+            document.getElementById('u-money').innerText = Math.floor(s.val()||0).toLocaleString();
         });
 
         onValue(ref(db, 'provinces'), (snapshot) => {
@@ -157,36 +138,29 @@
                 const div = document.getElementById(`tile-${id}`);
                 if(!div) continue;
 
-                // 🚨 [초강력 보안 패치] 데이터가 아예 없을 경우를 대비한 3중 안전장치
-                const provinceData = data[id] || {};
-                const ownerName = provinceData.owner || "중립";
+                // 🚨 [여기가 핵심 수정구간] undefined 방어 로직 강화
+                const p = data[id] || {}; // 데이터가 아예 없으면 빈 객체 할당
+                const owner = p.owner || "중립"; // owner 속성이 없으면 "중립" 할당
 
-                // 클래스 초기화 후 부여
+                // includes 에러 원천 차단
                 div.classList.remove('m', 's', 'mj');
-                if(ownerName.includes("서민규")) div.classList.add('m');
-                else if(ownerName.includes("박세찬")) div.classList.add('s');
-                else if(ownerName.includes("김만중")) div.classList.add('mj');
-                
+                if(owner.includes("서민규")) div.classList.add('m');
+                else if(owner.includes("박세찬")) div.classList.add('s');
+                else if(owner.includes("김만중")) div.classList.add('mj');
+
                 if(id === selId) div.style.boxShadow = "inset 0 0 12px #fff";
                 else div.style.boxShadow = "none";
 
-                div.onclick = () => { 
-                    if(isMoving) return; 
-                    selId = id; 
-                    updateUI(provinceData, id); 
-                };
+                div.onclick = () => { if(isMoving) return; selId = id; updateUI(p, id); };
             }
         });
     }
 
     function updateUI(p, id) {
         const side = document.getElementById('side-content');
-        if(!side) return;
-        
         const owner = p.owner || "중립";
         const pop = p.population || 50000;
         const isMine = (owner === myName);
-        
         side.innerHTML = `
             <div class="panel-title">SECTION ${id}</div>
             <div class="row"><span>소유권</span><span>${owner}</span></div>
@@ -206,50 +180,28 @@
     };
 
     window.work = async (n, c, t) => {
-        if(!selId) return;
         const mSnap = await get(ref(db, `players/${myName}/resources/money`));
         const money = mSnap.val() || 0;
         if(money < c) return alert("예산 부족!");
-        
-        const finish = Date.now() + (t * 3600000);
         const updates = {};
-        updates[`provinces/${selId}/work`] = { name: n, finishAt: finish, owner: myName };
+        updates[`provinces/${selId}/work`] = { name: n, finishAt: Date.now() + (t * 3600000), owner: myName };
         updates[`players/${myName}/resources/money`] = money - c;
         update(ref(db), updates).then(() => alert(`${n} 생산 시작!`));
     };
 
     function init() {
-        const view = document.getElementById('viewport');
-        const layer = document.getElementById('map-layer');
-        if(!view || !layer) return;
-
+        const view = document.getElementById('viewport'), layer = document.getElementById('map-layer');
         const draw = () => layer.style.transform = `translate(${px}px, ${py}px) scale(${scale})`;
         let active = false, lx, ly, moveDist = 0;
-
-        view.onpointerdown = (e) => { 
-            active = true; isMoving = false; moveDist = 0;
-            lx = e.clientX; ly = e.clientY; 
-            view.setPointerCapture(e.pointerId);
-        };
-
+        view.onpointerdown = (e) => { active = true; isMoving = false; moveDist = 0; lx = e.clientX; ly = e.clientY; view.setPointerCapture(e.pointerId); };
         window.onpointermove = (e) => {
             if(!active) return;
-            let dx = e.clientX - lx;
-            let dy = e.clientY - ly;
-            moveDist += Math.abs(dx) + Math.abs(dy);
-            if(moveDist > 5) isMoving = true; 
-            px += dx; py += dy;
-            lx = e.clientX; ly = e.clientY;
-            draw();
+            let dx = e.clientX-lx, dy = e.clientY-ly;
+            moveDist += Math.abs(dx)+Math.abs(dy); if(moveDist > 5) isMoving = true;
+            px += dx; py += dy; lx = e.clientX; ly = e.clientY; draw();
         };
-
         window.onpointerup = (e) => { active = false; view.releasePointerCapture(e.pointerId); };
-        view.onwheel = (e) => { 
-            e.preventDefault();
-            scale -= e.deltaY * 0.0005; 
-            scale = Math.min(Math.max(0.1, scale), 3); 
-            draw(); 
-        };
+        view.onwheel = (e) => { e.preventDefault(); scale -= e.deltaY * 0.0005; scale = Math.min(Math.max(0.1, scale), 3); draw(); };
         draw();
     }
 </script>
