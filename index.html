@@ -121,7 +121,6 @@
             document.getElementById('side-content').innerHTML = '<p style="text-align:center; margin-top:100px; opacity:0.2;">섹터를 선택하십시오.</p>';
             document.getElementById('login-gate').style.display = "none";
             
-            // 🚨 엔진 가동
             renderBaseGrid(); 
             sync();
             init();
@@ -157,8 +156,13 @@
                 const div = document.getElementById(`tile-${id}`);
                 if(!div) continue;
 
-                div.className = `tile ${p.owner.includes("서민규")?'m':p.owner.includes("박세찬")?'s':p.owner.includes("김만중")?'mj':''}`;
+                // 🚨 [패치] ownerName이 없을 경우 빈 값으로 처리하여 includes 에러 방지
+                const ownerName = p.owner || "";
+
+                div.className = `tile ${ownerName.includes("서민규")?'m':ownerName.includes("박세찬")?'s':ownerName.includes("김만중")?'mj':''}`;
+                
                 if(id === selId) div.style.boxShadow = "inset 0 0 12px #fff";
+                else div.style.boxShadow = "none";
 
                 div.onclick = () => { 
                     if(isMoving) return; 
@@ -174,7 +178,7 @@
         const isMine = (p.owner === myName);
         side.innerHTML = `
             <div class="panel-title">SECTION ${p.id}</div>
-            <div class="row"><span>소유권</span><span>${p.owner}</span></div>
+            <div class="row"><span>소유권</span><span>${p.owner || "중립"}</span></div>
             <div class="row"><span>인구</span><span>${(p.population || 50000).toLocaleString()}명</span></div>
             <button class="btn ${isMine?'btn-green':'btn-red'}" onclick="toggleList()">${isMine?'병력 모집':'공격 개시'}</button>
             <div id="sub-list">
