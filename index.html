@@ -2,29 +2,43 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FriendWarapp - ENGINE FORCE</title>
+    <title>FriendWarapp - FINAL RADIUS</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
         :root { --accent: #38bdf8; --mingyu: #22c55e; --sechan: #3b82f6; --manjung: #ef4444; }
         body { margin: 0; background: #020617; color: #f8fafc; font-family: sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
+        
+        /* 로그인 */
         #login-gate { position: fixed; inset: 0; background: #020617; display: flex; align-items: center; justify-content: center; z-index: 9999; }
         .login-box { background: #0f172a; padding: 40px; border: 2px solid var(--accent); border-radius: 12px; text-align: center; width: 280px; }
-        .login-box input { width: 100%; padding: 12px; margin-bottom: 10px; background: #020617; color: white; border: 1px solid #334155; box-sizing: border-box; }
+        .login-box input { width: 100%; padding: 12px; margin-bottom: 10px; background: #020617; color: white; border: 1px solid #334155; }
         #login-btn { width: 100%; padding: 12px; background: var(--accent); color: #020617; border: none; font-weight: bold; cursor: pointer; }
-        .header { height: 50px; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; align-items: center; padding: 0 20px; background: #020617; }
+
+        /* 메인 UI */
+        .header { height: 50px; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; align-items: center; padding: 0 20px; }
         .main-container { display: flex; flex: 1; overflow: hidden; }
+        
+        /* 맵 컨트롤 영역 */
         #viewport { flex: 1; position: relative; overflow: hidden; background: #000; cursor: grab; }
         #map-layer { position: absolute; transform-origin: 0 0; width: 1024px; height: 768px; }
-        #map-img { position: absolute; inset: 0; background: url('map.png') no-repeat; background-size: 100% 100%; }
-        #grid-overlay { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(16, 1fr); grid-template-rows: repeat(16, 1fr); z-index: 100; pointer-events: auto; }
-        .tile { border: 0.5px solid rgba(255,255,255,0.05); box-sizing: border-box; cursor: pointer; }
-        .tile:hover { background: rgba(56, 189, 248, 0.2); }
-        .tile.active { border: 3px solid #fff !important; box-shadow: inset 0 0 15px #fff; background: rgba(255,255,255,0.2) !important; }
+        #map-img { position: absolute; inset: 0; background: url('map.png') no-repeat; background-size: 100% 100%; z-index: 1; }
+        
+        /* 🚨 클릭용 격자 (타일 클릭 유실 방지를 위해 포인터 이벤트 강화) */
+        #grid-overlay { 
+            position: absolute; inset: 0; 
+            display: grid; grid-template-columns: repeat(16, 1fr); grid-template-rows: repeat(16, 1fr); 
+            z-index: 100; pointer-events: auto !important;
+        }
+        .tile { border: 0.1px solid rgba(255,255,255,0.05); box-sizing: border-box; }
+        .tile.active { border: 3px solid #fff !important; background: rgba(255,255,255,0.2) !important; z-index: 101; }
+        
+        /* 세력 색상 */
         .tile.m { background: rgba(34, 197, 94, 0.4); }
         .tile.s { background: rgba(59, 130, 246, 0.4); }
         .tile.mj { background: rgba(239, 68, 68, 0.4); }
+
+        /* 우측 패널 */
         #side-panel { width: 300px; background: #0f172a; border-left: 2px solid var(--accent); padding: 20px; box-sizing: border-box; z-index: 1000; }
         .action-btn { width: 100%; padding: 12px; margin-top: 10px; background: #1e293b; color: #fff; border: 1px solid var(--accent); cursor: pointer; font-weight: bold; }
     </style>
@@ -34,9 +48,9 @@
     <div id="login-gate">
         <div class="login-box">
             <h2 style="color:var(--accent)">COMMANDER FORCE</h2>
-            <input type="text" id="user-id" placeholder="사령관명">
-            <input type="password" id="user-pw" placeholder="보안코드">
-            <button id="login-btn">CONNECT</button>
+            <input type="text" id="user-id" placeholder="사령관명" value="서민규">
+            <input type="password" id="user-pw" placeholder="보안코드" value="140625">
+            <button id="login-btn">CONNECT SYSTEM</button>
         </div>
     </div>
 
@@ -54,14 +68,13 @@
         </div>
         <div id="side-panel">
             <div id="side-content">
-                <p style="text-align:center; opacity:0.3; margin-top:100px;">시스템 부팅 대기 중...</p>
+                <p style="text-align:center; opacity:0.3; margin-top:100px;">섹터를 터치하십시오.</p>
             </div>
         </div>
     </div>
 
 <script>
-    // 🚨 [JS 엔진 강제 시작 알림]
-    console.log("FRIEND WAR ENGINE STARTING...");
+    console.log("ENGINE STATUS: INITIALIZING...");
 
     const firebaseConfig = { databaseURL: "https://friendwargme-default-rtdb.firebaseio.com/" };
     firebase.initializeApp(firebaseConfig);
@@ -69,50 +82,63 @@
 
     let myName = "", selId = null, scale = 1.0, px = 0, py = 0, isMoving = false;
 
-    // 로그인 리스너
+    // 로그인 핸들러
     document.getElementById('login-btn').onclick = function() {
         const id = document.getElementById('user-id').value.trim();
         const pw = document.getElementById('user-pw').value.trim();
         const auth = { "서민규": "140625", "박세찬": "1234**", "김만중": "98765" };
 
         if (auth[id] === pw) {
-            console.log("인증 성공: ", id);
+            console.log("인증 성공: " + id);
             myName = id;
             document.getElementById('display-name').innerText = id;
             document.getElementById('login-gate').style.display = "none";
             bootSystem();
-        } else { alert("인증 실패"); }
+        } else { alert("ACCESS DENIED"); }
     };
 
     function bootSystem() {
-        // 격자 생성
+        console.log("BOOTING SYSTEM...");
         const grid = document.getElementById('grid-overlay');
         grid.innerHTML = "";
+        
+        // 1. 타일 생성
         for (let i = 1; i <= 256; i++) {
             const id = "P" + i;
             const tile = document.createElement('div');
             tile.className = 'tile';
-            tile.setAttribute('data-id', id);
-            
-            tile.onclick = function() {
-                if (isMoving) return;
-                console.log("섹터 신호 터치: ", id);
-                handleSectorClick(id);
-            };
+            tile.id = "tile-" + id;
             grid.appendChild(tile);
         }
 
-        // 실시간 데이터 연동
-        db.ref('players/' + myName + '/resources/money').on('value', function(s) {
-            document.getElementById('display-money').innerText = Math.floor(s.val() || 0).toLocaleString();
-        });
+        // 2. 🚨 클릭 이벤트 강제 바인딩 (이벤트 위임 방식)
+        grid.onclick = function(e) {
+            if (isMoving) return;
+            
+            // 클릭된 좌표로 타일 인덱스 역추적 (가장 확실함)
+            const rect = grid.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const col = Math.floor((x / rect.width) * 16);
+            const row = Math.floor((y / rect.height) * 16);
+            const index = row * 16 + col + 1;
+            
+            if (index >= 1 && index <= 256) {
+                const targetId = "P" + index;
+                console.log("클릭 감지 -> 섹터 ID: " + targetId);
+                handleSectorClick(targetId);
+            }
+        };
 
+        // 실시간 세력 업데이트
         db.ref('provinces').on('value', function(snap) {
             const data = snap.val() || {};
-            const tiles = document.getElementsByClassName('tile');
-            for (let t of tiles) {
-                const tid = t.getAttribute('data-id');
-                const owner = data[tid] ? data[tid].owner : "";
+            for(let i=1; i<=256; i++) {
+                const id = "P" + i;
+                const t = document.getElementById("tile-" + id);
+                if(!t) continue;
+                const owner = data[id] ? data[id].owner : "";
                 t.classList.remove('m', 's', 'mj');
                 if (owner === "서민규") t.classList.add('m');
                 else if (owner === "박세찬") t.classList.add('s');
@@ -120,27 +146,36 @@
             }
         });
 
+        // 돈 업데이트
+        db.ref('players/' + myName + '/resources/money').on('value', function(s) {
+            document.getElementById('display-money').innerText = Math.floor(s.val() || 0).toLocaleString();
+        });
+
         setupMap();
     }
 
     async function handleSectorClick(id) {
         selId = id;
-        const tiles = document.getElementsByClassName('tile');
-        for (let t of tiles) t.classList.remove('active');
-        document.querySelector('[data-id="' + id + '"]').classList.add('active');
+        // 하이라이트
+        const all = document.getElementsByClassName('tile');
+        for (let a of all) a.classList.remove('active');
+        document.getElementById("tile-" + id).classList.add('active');
 
         const side = document.getElementById('side-content');
-        side.innerHTML = "<h4>분석 중...</h4>";
+        side.innerHTML = "<h4>데이터 수신 중...</h4>";
 
+        // Firebase 데이터 단발성 조회
         db.ref('provinces/' + id).once('value').then(function(snap) {
             const data = snap.val() || { owner: "중립", population: 50000 };
+            console.log("데이터 수신 완료: ", data);
+            
             side.innerHTML = 
-                '<h2 style="color:var(--accent)">SECTION ' + id + '</h2>' +
-                '<p>지배: <b>' + data.owner + '</b></p>' +
-                '<p>인구: <b>' + (data.population || 50000).toLocaleString() + '</b></p>' +
-                '<hr style="border-color:#334155">' +
-                '<button class="action-btn" onclick="alert(\'병력 모집 명령\')">💂 병력 모집 (100G)</button>' +
-                '<button class="action-btn" onclick="alert(\'시설 건설 명령\')">🏢 시설 건설 (500G)</button>';
+                '<h2 style="color:var(--accent); margin-top:0;">SECTION ' + id + '</h2>' +
+                '<p style="margin:5px 0;">지배 세력: <b style="color:var(--accent)">' + data.owner + '</b></p>' +
+                '<p style="margin:5px 0;">거주 인구: <b>' + (data.population || 50000).toLocaleString() + '명</b></p>' +
+                '<hr style="border:0; border-top:1px solid #334155; margin:15px 0;">' +
+                '<button class="action-btn" onclick="alert(\'병력 소집 명령\')">💂 병력 모집 (100G)</button>' +
+                '<button class="action-btn" onclick="alert(\'방어 시설 건설\')">🏢 시설 건설 (500G)</button>';
         });
     }
 
@@ -149,16 +184,20 @@
         const update = function() { layer.style.transform = 'translate(' + px + 'px, ' + py + 'px) scale(' + scale + ')'; };
         let active = false, lx, ly;
 
-        view.onpointerdown = function(e) { active = true; isMoving = false; lx = e.clientX; ly = e.clientY; view.setPointerCapture(e.pointerId); };
+        view.onpointerdown = function(e) { 
+            active = true; isMoving = false; lx = e.clientX; ly = e.clientY; 
+            view.setPointerCapture(e.pointerId); 
+        };
         window.onpointermove = function(e) {
             if (!active) return;
             let dx = e.clientX - lx, dy = e.clientY - ly;
-            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) isMoving = true;
+            if (Math.abs(dx) > 5 || Math.abs(dy) > 5) isMoving = true;
             px += dx; py += dy; lx = e.clientX; ly = e.clientY; update();
         };
         window.onpointerup = function() { active = false; };
         view.onwheel = function(e) { scale -= e.deltaY * 0.001; scale = Math.min(Math.max(0.3, scale), 3); update(); };
         
+        // 초기 중앙 정렬
         px = (view.clientWidth - 1024) / 2; py = (view.clientHeight - 768) / 2;
         update();
     }
