@@ -2,33 +2,56 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ORN COMMAND CENTER</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
     <style>
         /* 사령관님 스타일 취향 저격: 다크 & 사이버 */
         :root { --accent: #38bdf8; --mingyu: #22c55e; --sechan: #3b82f6; --manjung: #ef4444; }
-        body { margin: 0; background: #020617; color: #f8fafc; font-family: 'Noto Sans KR', sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; font-size: 11px; }
+        body { 
+            margin: 0; background: #020617; color: #f8fafc; 
+            font-family: 'Noto Sans KR', sans-serif; overflow: hidden; 
+            display: flex; flex-direction: column; height: 100vh; font-size: 11px; 
+            -webkit-user-select: none; user-select: none; /* 앱처럼 텍스트 선택 방지 */
+        }
         
         /* 헤더 디자인 */
-        .header { height: 45px; padding: 0 1rem; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; align-items: center; background: #020617; z-index: 10; }
+        .header { height: 45px; padding: 0 1rem; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; align-items: center; background: #020617; z-index: 2000; }
         .header b { font-family: 'Orbitron'; color: var(--accent); font-size: 16px; }
 
-        .container { display: flex; flex: 1; overflow: hidden; }
+        .container { display: flex; flex: 1; overflow: hidden; position: relative; }
         
         /* 지도 (무제한 이동 지원) */
-        #viewport { flex: 1; position: relative; overflow: hidden; background: radial-gradient(#1e293b 1px, transparent 1px); background-size: 30px 30px; cursor: grab; }
-        #map-layer { position: absolute; transform-origin: center; width: 1024px; height: 768px; }
-        #map-img { width: 100%; height: 100%; background: url('./map.png') no-repeat; background-size: 100% 100%; position: relative; }
-        #grid { display: grid; grid-template-columns: repeat(16, 1fr); grid-template-rows: repeat(16, 1fr); width: 100%; height: 100%; }
+        #viewport { 
+            flex: 1; position: relative; overflow: hidden; 
+            background: radial-gradient(#1e293b 1px, transparent 1px); 
+            background-size: 30px 30px; cursor: grab; touch-action: none;
+        }
+        #map-layer { 
+            position: absolute; transform-origin: 0 0; /* 좌표 정확도를 위해 0 0 고정 */
+            width: 1024px; height: 768px; pointer-events: none; /* 레이어 자체는 통과 */
+        }
+        #map-img { 
+            width: 100%; height: 100%; background: url('./map.png') no-repeat; 
+            background-size: 100% 100%; position: relative; 
+        }
+        
+        /* 🚨 클릭 해결사: 그리드 레이어 */
+        #grid { 
+            display: grid; grid-template-columns: repeat(16, 1fr); 
+            grid-template-rows: repeat(16, 1fr); width: 100%; height: 100%; 
+            pointer-events: auto; /* 타일들이 클릭을 받도록 설정 */
+        }
 
         /* 타일 가시성 */
-        .tile { border: 0.1px solid rgba(255,255,255,0.05); }
+        .tile { border: 0.1px solid rgba(255,255,255,0.05); box-sizing: border-box; }
         .tile.m { background: rgba(34, 197, 94, 0.1); border: 1px solid var(--mingyu); }
         .tile.s { background: rgba(59, 130, 246, 0.1); border: 1px solid var(--sechan); }
         .tile.mj { background: rgba(239, 68, 68, 0.1); border: 1px solid var(--manjung); }
+        .tile:active { background: rgba(255,255,255,0.15); } /* 터치 피드백 */
 
         /* 🚨 절대 안 깨지게 만든 사이드 UI */
-        #side-panel { width: 300px; background: rgba(15, 23, 42, 0.95); border-left: 1px solid #334155; padding: 20px; backdrop-filter: blur(10px); }
+        #side-panel { width: 300px; background: rgba(15, 23, 42, 0.95); border-left: 1px solid #334155; padding: 20px; backdrop-filter: blur(10px); z-index: 1000; }
         .panel-title { font-family: 'Orbitron'; color: var(--accent); border-bottom: 1px solid #475569; padding-bottom: 10px; margin-bottom: 15px; font-size: 14px; }
         .row { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 0.5px solid #1e293b; padding-bottom: 5px; }
         
@@ -70,32 +93,38 @@
     const db = getDatabase(app);
 
     let myName = "", selId = null, scale = 0.8;
-    let px = window.innerWidth/2 - 400, py = window.innerHeight/2 - 300;
+    // 초기 위치 중앙 정렬
+    let px = (window.innerWidth - 300)/2 - (512 * scale), py = window.innerHeight/2 - (384 * scale);
+    let isMoving = false; // 드래그 판정용
 
-    // 1. 로그인 (이건 사령관님이 직접 입력하시니까)
     window.onload = () => {
         const u = prompt("지휘관 성함을 입력하십시오.");
         if(u) { myName = u; document.getElementById('u-name').innerText = u; init(); sync(); }
     };
 
     function sync() {
-        // 돈 동기화
         onValue(ref(db, `players/${myName}/resources/money`), s => {
             document.getElementById('u-money').innerText = Math.floor(s.val()||0).toLocaleString();
         });
 
-        // 지도 동기화
         onValue(ref(db, 'provinces'), (snapshot) => {
             const grid = document.getElementById('grid');
             const data = snapshot.val() || {};
             grid.innerHTML = "";
             for(let i=1; i<=256; i++) {
                 const id = `P${i}`;
-                const p = data[id] || { owner: "중립", population: 50000 };
+                const p = data[id] || { id: id, owner: "중립", population: 50000 };
                 const div = document.createElement('div');
                 div.className = `tile ${p.owner.includes("서민규")?'m':p.owner.includes("박세찬")?'s':p.owner.includes("김만중")?'mj':''}`;
-                if(id === selId) div.style.boxShadow = "inset 0 0 10px #fff";
-                div.onclick = () => { selId = id; updateUI(p); sync(); };
+                if(id === selId) div.style.boxShadow = "inset 0 0 12px #fff";
+                
+                // 🚨 클릭 로직 보강
+                div.onclick = (e) => {
+                    if(isMoving) return; // 드래그 중엔 클릭 무시
+                    selId = id; 
+                    updateUI(p); 
+                    sync(); 
+                };
                 grid.appendChild(div);
             }
         });
@@ -107,7 +136,7 @@
         side.innerHTML = `
             <div class="panel-title">SECTION ${p.id}</div>
             <div class="row"><span>소유권</span><span>${p.owner}</span></div>
-            <div class="row"><span>인구</span><span>${p.population.toLocaleString()}명</span></div>
+            <div class="row"><span>인구</span><span>${(p.population || 50000).toLocaleString()}명</span></div>
             <button class="btn ${isMine?'btn-green':'btn-red'}" onclick="toggleList()">${isMine?'병력 모집':'공격 개시'}</button>
             <div id="sub-list">
                 <div class="unit-opt" onclick="work('보병', 100, 1)"><span>💂 보병</span><span>100G</span></div>
@@ -126,8 +155,7 @@
         const mSnap = await get(ref(db, `players/${myName}/resources/money`));
         const money = mSnap.val() || 0;
         if(money < c) return alert("예산 부족!");
-        
-        const finish = Date.now() + (t * 3600000); // 실제 시간 계산
+        const finish = Date.now() + (t * 3600000);
         const updates = {};
         updates[`provinces/${selId}/work`] = { name: n, finishAt: finish, owner: myName };
         updates[`players/${myName}/resources/money`] = money - c;
@@ -139,15 +167,32 @@
         const layer = document.getElementById('map-layer');
         const draw = () => layer.style.transform = `translate(${px}px, ${py}px) scale(${scale})`;
         
-        let moving = false, lx, ly;
-        view.onmousedown = (e) => { moving = true; lx = e.clientX; ly = e.clientY; };
-        window.onmousemove = (e) => {
-            if(!moving) return;
-            px += (e.clientX - lx); py += (e.clientY - ly);
-            lx = e.clientX; ly = e.clientY; draw();
+        let active = false, lx, ly, moveDist = 0;
+
+        view.onpointerdown = (e) => { 
+            active = true; isMoving = false; moveDist = 0;
+            lx = e.clientX; ly = e.clientY; 
+            view.setPointerCapture(e.pointerId);
         };
-        window.onmouseup = () => moving = false;
-        view.onwheel = (e) => { scale -= e.deltaY * 0.0005; scale = Math.min(Math.max(0.1, scale), 3); draw(); };
+
+        window.onpointermove = (e) => {
+            if(!active) return;
+            let dx = e.clientX - lx;
+            let dy = e.clientY - ly;
+            moveDist += Math.abs(dx) + Math.abs(dy);
+            if(moveDist > 5) isMoving = true; // 5픽셀 이상 움직이면 드래그로 판정
+            px += dx; py += dy;
+            lx = e.clientX; ly = e.clientY;
+            draw();
+        };
+
+        window.onpointerup = (e) => { active = false; view.releasePointerCapture(e.pointerId); };
+        view.onwheel = (e) => { 
+            e.preventDefault();
+            scale -= e.deltaY * 0.0005; 
+            scale = Math.min(Math.max(0.1, scale), 3); 
+            draw(); 
+        };
         draw();
     }
 </script>
