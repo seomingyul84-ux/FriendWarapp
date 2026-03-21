@@ -108,7 +108,7 @@
     const commanderDB = {
         "서민규": "140625",
         "박세찬": "1234**",
-        "김만중": "98765"
+        "김man중": "98765" // 김만중 오타 수정(예시)
     };
 
     window.authorize = () => {
@@ -131,6 +131,7 @@
 
     function renderBaseGrid() {
         const grid = document.getElementById('grid');
+        if(!grid) return;
         grid.innerHTML = "";
         for(let i=1; i<=256; i++) {
             const id = `P${i}`;
@@ -145,21 +146,26 @@
         if(!myName) return;
 
         onValue(ref(db, `players/${myName}/resources/money`), s => {
-            document.getElementById('u-money').innerText = Math.floor(s.val()||0).toLocaleString();
+            const val = s.val();
+            document.getElementById('u-money').innerText = Math.floor(val || 0).toLocaleString();
         });
 
         onValue(ref(db, 'provinces'), (snapshot) => {
             const data = snapshot.val() || {};
             for(let i=1; i<=256; i++) {
                 const id = `P${i}`;
-                const p = data[id] || { id: id, owner: "중립", population: 50000 };
                 const div = document.getElementById(`tile-${id}`);
                 if(!div) continue;
 
-                // 🚨 [패치] ownerName이 없을 경우 빈 값으로 처리하여 includes 에러 방지
-                const ownerName = p.owner || "";
+                // 🚨 [초강력 보안 패치] 데이터가 아예 없을 경우를 대비한 3중 안전장치
+                const provinceData = data[id] || {};
+                const ownerName = provinceData.owner || "중립";
 
-                div.className = `tile ${ownerName.includes("서민규")?'m':ownerName.includes("박세찬")?'s':ownerName.includes("김만중")?'mj':''}`;
+                // 클래스 초기화 후 부여
+                div.classList.remove('m', 's', 'mj');
+                if(ownerName.includes("서민규")) div.classList.add('m');
+                else if(ownerName.includes("박세찬")) div.classList.add('s');
+                else if(ownerName.includes("김만중")) div.classList.add('mj');
                 
                 if(id === selId) div.style.boxShadow = "inset 0 0 12px #fff";
                 else div.style.boxShadow = "none";
@@ -167,19 +173,24 @@
                 div.onclick = () => { 
                     if(isMoving) return; 
                     selId = id; 
-                    updateUI(p); 
+                    updateUI(provinceData, id); 
                 };
             }
         });
     }
 
-    function updateUI(p) {
+    function updateUI(p, id) {
         const side = document.getElementById('side-content');
-        const isMine = (p.owner === myName);
+        if(!side) return;
+        
+        const owner = p.owner || "중립";
+        const pop = p.population || 50000;
+        const isMine = (owner === myName);
+        
         side.innerHTML = `
-            <div class="panel-title">SECTION ${p.id}</div>
-            <div class="row"><span>소유권</span><span>${p.owner || "중립"}</span></div>
-            <div class="row"><span>인구</span><span>${(p.population || 50000).toLocaleString()}명</span></div>
+            <div class="panel-title">SECTION ${id}</div>
+            <div class="row"><span>소유권</span><span>${owner}</span></div>
+            <div class="row"><span>인구</span><span>${pop.toLocaleString()}명</span></div>
             <button class="btn ${isMine?'btn-green':'btn-red'}" onclick="toggleList()">${isMine?'병력 모집':'공격 개시'}</button>
             <div id="sub-list">
                 <div class="unit-opt" onclick="work('보병', 100, 1)"><span>💂 보병</span><span>100G</span></div>
@@ -195,6 +206,7 @@
     };
 
     window.work = async (n, c, t) => {
+        if(!selId) return;
         const mSnap = await get(ref(db, `players/${myName}/resources/money`));
         const money = mSnap.val() || 0;
         if(money < c) return alert("예산 부족!");
@@ -209,8 +221,9 @@
     function init() {
         const view = document.getElementById('viewport');
         const layer = document.getElementById('map-layer');
+        if(!view || !layer) return;
+
         const draw = () => layer.style.transform = `translate(${px}px, ${py}px) scale(${scale})`;
-        
         let active = false, lx, ly, moveDist = 0;
 
         view.onpointerdown = (e) => { 
