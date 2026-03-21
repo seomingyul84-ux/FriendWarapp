@@ -4,65 +4,80 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ORN COMMAND CENTER</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
     <style>
         :root { --accent: #38bdf8; --mingyu: #22c55e; --sechan: #3b82f6; --manjung: #ef4444; }
         body { 
             margin: 0; background: #020617; color: #f8fafc; 
-            font-family: 'Noto Sans KR', sans-serif; overflow: hidden; 
-            display: flex; flex-direction: column; height: 100vh; font-size: 11px; 
-            -webkit-user-select: none; user-select: none;
+            font-family: sans-serif; overflow: hidden; 
+            display: flex; flex-direction: column; height: 100vh;
         }
 
+        /* 🔒 로그인 게이트 (최상단) */
         #login-gate { position: fixed; inset: 0; background: #020617; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
-        .login-card { background: rgba(15, 23, 42, 0.95); padding: 40px; border: 2px solid var(--accent); border-radius: 12px; width: 300px; text-align: center; }
-        .login-input { width: 100%; padding: 14px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; outline: none; }
-        .login-btn { width: 100%; padding: 14px; background: var(--accent); color: #020617; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-family: 'Orbitron'; }
+        .login-card { background: rgba(15, 23, 42, 0.95); padding: 40px; border: 2px solid var(--accent); border-radius: 12px; text-align: center; }
+        .login-input { width: 200px; padding: 12px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: white; display: block; outline: none; }
+        .login-btn { width: 226px; padding: 12px; background: var(--accent); color: #020617; border: none; font-weight: bold; cursor: pointer; }
 
+        /* 메인 UI */
         .header { height: 45px; padding: 0 1rem; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; align-items: center; background: #020617; z-index: 2000; }
-        .header b { font-family: 'Orbitron'; color: var(--accent); font-size: 16px; }
         .container { display: flex; flex: 1; overflow: hidden; position: relative; }
         
-        #viewport { flex: 1; position: relative; overflow: hidden; background: #020617; cursor: grab; touch-action: none; }
-        #map-layer { position: absolute; transform-origin: 0 0; width: 1024px; height: 768px; }
-        #map-img { width: 100%; height: 100%; background: url('./map.png') no-repeat; background-size: 100% 100%; position: relative; }
+        /* 🗺️ 지도 뷰포트 */
+        #viewport { flex: 1; position: relative; overflow: hidden; background: #000; touch-action: none; cursor: grab; }
         
-        /* 🚨 핵심: grid가 모든 클릭을 우선적으로 받도록 설정 */
-        #grid { 
-            display: grid; grid-template-columns: repeat(16, 1fr); grid-template-rows: repeat(16, 1fr); 
-            width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 50;
+        /* 🚨 레이어 구조 핵심 수정 */
+        #map-layer { position: absolute; transform-origin: 0 0; width: 1024px; height: 768px; }
+        
+        #map-img { 
+            position: absolute; inset: 0; 
+            background: url('./map.png') no-repeat center; background-size: 100% 100%; 
+            z-index: 1; pointer-events: none; /* 지도는 클릭 통과 */
         }
         
-        .tile { border: 0.5px solid rgba(255,255,255,0.1); box-sizing: border-box; cursor: pointer; transition: background 0.2s; }
-        .tile.m { background: rgba(34, 197, 94, 0.35); border: 1px solid var(--mingyu); }
-        .tile.s { background: rgba(59, 130, 246, 0.35); border: 1px solid var(--sechan); }
-        .tile.mj { background: rgba(239, 68, 68, 0.35); border: 1px solid var(--manjung); }
-        .tile:hover { background: rgba(255,255,255,0.15); }
+        #grid { 
+            position: absolute; inset: 0; 
+            display: grid; grid-template-columns: repeat(16, 1fr); grid-template-rows: repeat(16, 1fr); 
+            z-index: 100; /* 격자를 최상단으로 */
+            pointer-events: auto; /* 격자에서만 클릭 발생 */
+        }
+        
+        .tile { 
+            border: 0.1px solid rgba(255,255,255,0.1); 
+            box-sizing: border-box; 
+            cursor: pointer; 
+            display: flex; align-items: center; justify-content: center;
+            font-size: 9px; color: rgba(255,255,255,0.1); /* 섹터 번호 흐리게 */
+        }
+        .tile:hover { background: rgba(56, 189, 248, 0.1); }
+        .tile.selected { border: 2px solid #fff !important; box-shadow: inset 0 0 10px #fff; background: rgba(255,255,255,0.1); }
+        
+        /* 세력별 색상 */
+        .tile.m { background: rgba(34, 197, 94, 0.3); }
+        .tile.s { background: rgba(59, 130, 246, 0.3); }
+        .tile.mj { background: rgba(239, 68, 68, 0.3); }
 
-        #side-panel { width: 300px; background: rgba(15, 23, 42, 0.98); border-left: 1px solid #334155; padding: 20px; backdrop-filter: blur(10px); z-index: 1000; }
-        .panel-title { font-family: 'Orbitron'; color: var(--accent); border-bottom: 1px solid #475569; padding-bottom: 10px; margin-bottom: 15px; font-size: 14px; }
+        /* 우측 패널 */
+        #side-panel { width: 280px; background: #0f172a; border-left: 2px solid var(--accent); padding: 20px; z-index: 1500; }
+        .panel-title { font-size: 18px; color: var(--accent); font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #334155; padding-bottom: 10px; }
         .row { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 0.5px solid #1e293b; padding-bottom: 5px; }
-        .btn { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 4px; font-weight: bold; color: white; cursor: pointer; text-transform: uppercase; font-size: 10px; }
-        .btn-green { background: var(--mingyu); }
-        .btn-red { background: var(--manjung); }
-        #sub-list { margin-top: 15px; padding: 10px; background: #0f172a; border-radius: 5px; border: 1px solid var(--accent); display: none; }
-        .unit-opt { padding: 8px; margin-bottom: 5px; background: #1e293b; display: flex; justify-content: space-between; cursor: pointer; border-radius: 3px; }
+        .btn { width: 100%; padding: 12px; margin-top: 10px; border: none; color: white; cursor: pointer; font-weight: bold; border-radius: 4px; }
+        .btn-green { background: var(--mingyu); } .btn-red { background: var(--manjung); }
     </style>
 </head>
 <body>
 
     <div id="login-gate">
         <div class="login-card">
-            <h2>COMMANDER LOGIN</h2>
-            <input type="text" id="id-input" class="login-input" placeholder="사령관 성함">
-            <input type="password" id="pw-input" class="login-input" placeholder="보안 코드">
-            <button class="login-btn" onclick="authorize()">ACCESS COMMAND</button>
+            <h2 style="color:var(--accent)">COMMANDER ACCESS</h2>
+            <input type="text" id="id-input" class="login-input" placeholder="성함">
+            <input type="password" id="pw-input" class="login-input" placeholder="보안코드">
+            <button class="login-btn" onclick="authorize()">SYSTEM CONNECT</button>
         </div>
     </div>
 
     <div class="header">
-        <div><span style="font-size:9px; opacity:0.5;">COMMANDER</span> <b id="u-name">OFFLINE</b></div>
-        <div>CREDIT: <b id="u-money">0</b> <span style="font-size:9px;">G</span></div>
+        <div>USER: <b id="u-name">---</b></div>
+        <div>CREDIT: <b id="u-money">0</b> G</div>
     </div>
 
     <div class="container">
@@ -72,7 +87,11 @@
                 <div id="grid"></div>
             </div>
         </div>
-        <div id="side-panel"><div id="side-content"></div></div>
+        <div id="side-panel">
+            <div id="side-content">
+                <p style="text-align:center; opacity:0.3; margin-top:100px;">작전 지역을 선택하십시오</p>
+            </div>
+        </div>
     </div>
 
 <script type="module">
@@ -84,25 +103,24 @@
     const db = getDatabase(app);
 
     let myName = "", selId = null, scale = 0.8;
-    let px = (window.innerWidth - 300)/2 - (512 * scale), py = window.innerHeight/2 - (384 * scale);
-    let isMoving = false, isDragging = false;
-
-    const commanderDB = { "서민규": "140625", "박세찬": "1234**", "김만중": "98765" };
+    let px = 0, py = 0, isMoving = false;
 
     window.authorize = () => {
         const id = document.getElementById('id-input').value.trim();
         const pw = document.getElementById('pw-input').value.trim();
-        if (commanderDB[id] && commanderDB[id] === pw) {
+        const commanderDB = { "서민규": "140625", "박세찬": "1234**", "김만중": "98765" };
+
+        if (commanderDB[id] === pw) {
             myName = id;
             document.getElementById('u-name').innerText = id;
             document.getElementById('login-gate').style.display = "none";
-            renderBaseGrid(); 
+            renderGrid();
             sync();
-            init();
-        } else { alert("접근 거부"); }
+            initControl();
+        } else { alert("접속 권한이 없습니다."); }
     };
 
-    function renderBaseGrid() {
+    function renderGrid() {
         const grid = document.getElementById('grid');
         grid.innerHTML = "";
         for(let i=1; i<=256; i++) {
@@ -110,33 +128,32 @@
             const div = document.createElement('div');
             div.id = `tile-${id}`;
             div.className = 'tile';
-            
-            // 🚨 클릭 처리 강화: pointerup 대신 일반 click 사용
-            div.addEventListener('click', (e) => {
-                if(isMoving) return; // 드래그 중엔 클릭 무시
-                console.log("선택된 섹터:", id);
-                selId = id;
-                refreshSelection();
-                loadProvinceInfo(id);
+            div.innerText = i; // 디버깅용 섹터 번호
+
+            // 🚨 이벤트 리스너: pointerup으로 드래그와 클릭을 완벽 분리
+            div.addEventListener('pointerup', (e) => {
+                if(!isMoving) {
+                    console.log("섹터 선택 성공:", id);
+                    clickSector(id);
+                }
             });
             grid.appendChild(div);
         }
     }
 
-    async function loadProvinceInfo(id) {
-        const s = await get(ref(db, `provinces/${id}`));
-        const p = s.val() || { id: id, owner: "중립", population: 50000 };
+    async function clickSector(id) {
+        selId = id;
+        // 하이라이트 효과
+        document.querySelectorAll('.tile').forEach(t => t.classList.remove('selected'));
+        document.getElementById(`tile-${id}`).classList.add('selected');
+        
+        // 데이터 로드
+        const snap = await get(ref(db, `provinces/${id}`));
+        const p = snap.val() || { owner: "중립", population: 50000 };
         updateUI(p, id);
     }
 
-    function refreshSelection() {
-        document.querySelectorAll('.tile').forEach(t => {
-            t.style.boxShadow = t.id === `tile-${selId}` ? "inset 0 0 15px 3px #fff" : "none";
-        });
-    }
-
     function sync() {
-        if(!myName) return;
         onValue(ref(db, `players/${myName}/resources/money`), s => {
             document.getElementById('u-money').innerText = Math.floor(s.val()||0).toLocaleString();
         });
@@ -147,16 +164,12 @@
                 const id = `P${i}`;
                 const div = document.getElementById(`tile-${id}`);
                 if(!div) continue;
-
                 const p = data[id] || {};
-                const owner = p.owner || "중립";
-
+                const owner = p.owner || "";
                 div.classList.remove('m', 's', 'mj');
                 if(owner.includes("서민규")) div.classList.add('m');
                 else if(owner.includes("박세찬")) div.classList.add('s');
                 else if(owner.includes("김만중")) div.classList.add('mj');
-                
-                if(id === selId) div.style.boxShadow = "inset 0 0 15px 3px #fff";
             }
         });
     }
@@ -164,67 +177,36 @@
     function updateUI(p, id) {
         const side = document.getElementById('side-content');
         const owner = p.owner || "중립";
-        const pop = p.population || 50000;
         const isMine = (owner === myName);
         side.innerHTML = `
             <div class="panel-title">SECTION ${id}</div>
-            <div class="row"><span>소유권</span><span>${owner}</span></div>
-            <div class="row"><span>인구</span><span>${pop.toLocaleString()}명</span></div>
-            <button class="btn ${isMine?'btn-green':'btn-red'}" onclick="toggleList()">${isMine?'병력 모집':'공격 개시'}</button>
-            <div id="sub-list">
-                <div class="unit-opt" onclick="work('보병', 100, 1)"><span>💂 보병</span><span>100G</span></div>
-                <div class="unit-opt" onclick="work('전차', 500, 3)"><span>🚜 전차</span><span>500G</span></div>
-                <div class="unit-opt" onclick="work('전투기', 400, 2)"><span>🛩️ 전투기</span><span>400G</span></div>
-            </div>
+            <div class="row"><span>소유자</span><span>${owner}</span></div>
+            <div class="row"><span>인구수</span><span>${(p.population||50000).toLocaleString()}</span></div>
+            <button class="btn ${isMine?'btn-green':'btn-red'}" onclick="alert('준비 중...')">
+                ${isMine?'시설 관리':'공격 작전'}
+            </button>
         `;
     }
 
-    window.toggleList = () => {
-        const l = document.getElementById('sub-list');
-        if(l) l.style.display = l.style.display === 'block' ? 'none' : 'block';
-    };
-
-    window.work = async (n, c, t) => {
-        if(!selId) return;
-        const mSnap = await get(ref(db, `players/${myName}/resources/money`));
-        const money = mSnap.val() || 0;
-        if(money < c) return alert("예산 부족!");
-        const updates = {};
-        updates[`provinces/${selId}/work`] = { name: n, finishAt: Date.now() + (t * 3600000), owner: myName };
-        updates[`players/${myName}/resources/money`] = money - c;
-        update(ref(db), updates).then(() => alert(`${n} 생산 시작!`));
-    };
-
-    function init() {
+    function initControl() {
         const view = document.getElementById('viewport'), layer = document.getElementById('map-layer');
         const draw = () => layer.style.transform = `translate(${px}px, ${py}px) scale(${scale})`;
-        let active = false, lx, ly, dist = 0;
+        let active = false, lx, ly, moveDist = 0;
 
-        view.addEventListener('pointerdown', (e) => { 
-            active = true; isMoving = false; dist = 0;
-            lx = e.clientX; ly = e.clientY; 
-            view.setPointerCapture(e.pointerId);
-        });
-
-        window.addEventListener('pointermove', (e) => {
+        view.onpointerdown = (e) => { active = true; isMoving = false; moveDist = 0; lx = e.clientX; ly = e.clientY; view.setPointerCapture(e.pointerId); };
+        window.onpointermove = (e) => {
             if(!active) return;
-            let dx = e.clientX-lx, dy = e.clientY-ly;
-            dist += Math.abs(dx) + Math.abs(dy);
-            if(dist > 3) isMoving = true; // 3픽셀 이상 움직이면 드래그로 간주
+            let dx = e.clientX - lx, dy = e.clientY - ly;
+            moveDist += Math.sqrt(dx*dx + dy*dy);
+            if(moveDist > 5) isMoving = true; 
             px += dx; py += dy; lx = e.clientX; ly = e.clientY; draw();
-        });
-
-        window.addEventListener('pointerup', (e) => { 
-            active = false; 
-            view.releasePointerCapture(e.pointerId); 
-            // 약간의 딜레이 후 isMoving 해제 (클릭 이벤트가 먼저 발생하도록)
-            setTimeout(() => { isMoving = false; }, 50);
-        });
-
-        view.addEventListener('wheel', (e) => { 
-            e.preventDefault();
-            scale -= e.deltaY * 0.0005; scale = Math.min(Math.max(0.2, scale), 3); draw(); 
-        }, {passive: false});
+        };
+        window.onpointerup = (e) => { active = false; view.releasePointerCapture(e.pointerId); };
+        view.onwheel = (e) => { scale -= e.deltaY * 0.0005; scale = Math.min(Math.max(0.3, scale), 2); draw(); };
+        
+        // 초기 위치 중앙 정렬
+        px = (view.clientWidth - 1024 * scale) / 2;
+        py = (view.clientHeight - 768 * scale) / 2;
         draw();
     }
 </script>
