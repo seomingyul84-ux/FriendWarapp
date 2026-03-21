@@ -12,8 +12,25 @@
             margin: 0; background: #020617; color: #f8fafc; 
             font-family: 'Noto Sans KR', sans-serif; overflow: hidden; 
             display: flex; flex-direction: column; height: 100vh; font-size: 11px; 
-            -webkit-user-select: none; user-select: none; /* 앱처럼 텍스트 선택 방지 */
+            -webkit-user-select: none; user-select: none;
         }
+
+        /* 🚨 신규: 로그인 섹션 */
+        #login-overlay {
+            position: fixed; inset: 0; background: #020617; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 5000; transition: 0.5s;
+        }
+        .login-box {
+            background: rgba(15, 23, 42, 0.9); padding: 30px; border: 1px solid var(--accent);
+            border-radius: 8px; width: 280px; text-align: center; box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+        }
+        .login-box h2 { font-family: 'Orbitron'; color: var(--accent); margin-bottom: 20px; font-size: 18px; }
+        .login-box input {
+            width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #334155;
+            background: #0f172a; color: white; box-sizing: border-box; outline: none;
+        }
+        .login-box input:focus { border-color: var(--accent); }
         
         /* 헤더 디자인 */
         .header { height: 45px; padding: 0 1rem; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; align-items: center; background: #020617; z-index: 2000; }
@@ -28,29 +45,26 @@
             background-size: 30px 30px; cursor: grab; touch-action: none;
         }
         #map-layer { 
-            position: absolute; transform-origin: 0 0; /* 좌표 정확도를 위해 0 0 고정 */
-            width: 1024px; height: 768px; pointer-events: none; /* 레이어 자체는 통과 */
+            position: absolute; transform-origin: 0 0; 
+            width: 1024px; height: 768px; pointer-events: none;
         }
         #map-img { 
             width: 100%; height: 100%; background: url('./map.png') no-repeat; 
             background-size: 100% 100%; position: relative; 
         }
         
-        /* 🚨 클릭 해결사: 그리드 레이어 */
         #grid { 
             display: grid; grid-template-columns: repeat(16, 1fr); 
             grid-template-rows: repeat(16, 1fr); width: 100%; height: 100%; 
-            pointer-events: auto; /* 타일들이 클릭을 받도록 설정 */
+            pointer-events: auto;
         }
 
-        /* 타일 가시성 */
         .tile { border: 0.1px solid rgba(255,255,255,0.05); box-sizing: border-box; }
         .tile.m { background: rgba(34, 197, 94, 0.1); border: 1px solid var(--mingyu); }
         .tile.s { background: rgba(59, 130, 246, 0.1); border: 1px solid var(--sechan); }
         .tile.mj { background: rgba(239, 68, 68, 0.1); border: 1px solid var(--manjung); }
-        .tile:active { background: rgba(255,255,255,0.15); } /* 터치 피드백 */
+        .tile:active { background: rgba(255,255,255,0.15); }
 
-        /* 🚨 절대 안 깨지게 만든 사이드 UI */
         #side-panel { width: 300px; background: rgba(15, 23, 42, 0.95); border-left: 1px solid #334155; padding: 20px; backdrop-filter: blur(10px); z-index: 1000; }
         .panel-title { font-family: 'Orbitron'; color: var(--accent); border-bottom: 1px solid #475569; padding-bottom: 10px; margin-bottom: 15px; font-size: 14px; }
         .row { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 0.5px solid #1e293b; padding-bottom: 5px; }
@@ -64,6 +78,15 @@
     </style>
 </head>
 <body>
+
+    <div id="login-overlay">
+        <div class="login-box">
+            <h2>COMMANDER LOGIN</h2>
+            <input type="text" id="login-id" placeholder="사령관 이름">
+            <input type="password" id="login-pw" placeholder="보안 코드">
+            <button class="btn btn-green" style="background:var(--accent)" onclick="attemptLogin()">접속 시도</button>
+        </div>
+    </div>
 
     <div class="header">
         <div><span style="font-size:9px; opacity:0.5;">COMMANDER</span> <b id="u-name">-</b></div>
@@ -93,14 +116,35 @@
     const db = getDatabase(app);
 
     let myName = "", selId = null, scale = 0.8;
-    // 초기 위치 중앙 정렬
     let px = (window.innerWidth - 300)/2 - (512 * scale), py = window.innerHeight/2 - (384 * scale);
-    let isMoving = false; // 드래그 판정용
+    let isMoving = false;
 
-    window.onload = () => {
-        const u = prompt("지휘관 성함을 입력하십시오.");
-        if(u) { myName = u; document.getElementById('u-name').innerText = u; init(); sync(); }
+    // 🚨 정밀 로그인 로직
+    window.attemptLogin = () => {
+        const id = document.getElementById('login-id').value;
+        const pw = document.getElementById('login-pw').value;
+
+        // 계정 정보 정의
+        const accounts = {
+            "서민규": "140625",
+            "박세찬": "1234**",
+            "김만중": "98765"
+        };
+
+        if (accounts[id] && accounts[id] === pw) {
+            myName = id;
+            document.getElementById('u-name').innerText = id;
+            document.getElementById('login-overlay').style.opacity = "0";
+            setTimeout(() => {
+                document.getElementById('login-overlay').style.display = "none";
+            }, 500);
+            init(); sync();
+        } else {
+            alert("신원 확인 실패: 접근이 거부되었습니다.");
+        }
     };
+
+    // --- 이하 사령관님 기존 코드 무결성 유지 ---
 
     function sync() {
         onValue(ref(db, `players/${myName}/resources/money`), s => {
@@ -118,9 +162,8 @@
                 div.className = `tile ${p.owner.includes("서민규")?'m':p.owner.includes("박세찬")?'s':p.owner.includes("김만중")?'mj':''}`;
                 if(id === selId) div.style.boxShadow = "inset 0 0 12px #fff";
                 
-                // 🚨 클릭 로직 보강
                 div.onclick = (e) => {
-                    if(isMoving) return; // 드래그 중엔 클릭 무시
+                    if(isMoving) return; 
                     selId = id; 
                     updateUI(p); 
                     sync(); 
@@ -180,7 +223,7 @@
             let dx = e.clientX - lx;
             let dy = e.clientY - ly;
             moveDist += Math.abs(dx) + Math.abs(dy);
-            if(moveDist > 5) isMoving = true; // 5픽셀 이상 움직이면 드래그로 판정
+            if(moveDist > 5) isMoving = true; 
             px += dx; py += dy;
             lx = e.clientX; ly = e.clientY;
             draw();
